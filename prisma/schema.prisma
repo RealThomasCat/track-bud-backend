@@ -4,47 +4,88 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
+// --------------------------
+// Prisma Configuration
+// --------------------------
+
 generator client {
+  // Generates the JS/TS Prisma client we use in our code
   provider = "prisma-client-js"
 }
 
 datasource db {
+  // We're using PostgreSQL
   provider = "postgresql"
+  // Reads from the DATABASE_URL variable in .env
   url      = env("DATABASE_URL")
 }
 
+// --------------------------
+// Enums
+// --------------------------
+
+enum CategoryKind {
+  income
+  expense
+}
+
+// --------------------------
+// Models (Tables)
+// --------------------------
+
 model User {
+  id              Int      @id @default(autoincrement())
+  name            String
+  email           String   @unique
+  password        String
+  defaultCurrency String   @default("USD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  wallets      Wallet[]
+  categories   Category[]
+  transactions Transaction[]
+}
+
+model Wallet {
   id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  currency  String   @default("USD")
+  userId    Int
+  name      String   @default("Main Wallet")
+  isDefault Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
-}
-
-model Transaction {
-  id          Int      @id @default(autoincrement())
-  amount      Float
-  description String?
-  date        DateTime
-  type        String // "income" or "expense"
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  userId     Int
-  categoryId Int
-  user       User     @relation(fields: [userId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
 }
 
 model Category {
-  id        Int      @id @default(autoincrement())
-  name      String
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id         Int          @id @default(autoincrement())
+  userId     Int
+  name       String
+  kind       CategoryKind
+  isArchived Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
+  user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  walletId   Int
+  categoryId Int
+  amount     Decimal
+  occurredAt DateTime
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
 }
