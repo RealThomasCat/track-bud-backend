@@ -1,0 +1,15 @@
+// Centralized configuration file that:
+// Loads all environment variables from your .env file (via dotenv).
+// Exports them in a typed, clean, reusable format for the rest of your code.
+// Prevents you from repeatedly calling process.env.VARIABLE_NAME all over the app.
+
+import dotenv from "dotenv";
+dotenv.config();
+
+export const env = {
+    port: process.env.PORT || 5000,
+    jwtSecret: process.env.JWT_SECRET || "",
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+};
+
+// NOTE: No DatabaseUrl here because Prisma CLI commands (prisma generate, prisma migrate) automatically read it from .env.
