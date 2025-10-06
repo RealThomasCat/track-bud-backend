@@ -1,4 +1,4 @@
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
 // Helper to sign JWT tokens for user authentication
