@@ -5,9 +5,9 @@
     "outDir": "./dist",
 
     /* Environment */
-    "module": "commonjs",
+    "module": "Node16",
     "target": "es2020",
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "lib": ["esnext"],
     "types": ["node"],
 
@@ -24,7 +24,9 @@
     /* Other Recommended Options */
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
