@@ -63,6 +63,7 @@ model Category {
   id         Int      @id @default(autoincrement())
   userId     Int
   name       String
+  isDefault  Boolean  @default(false)
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
