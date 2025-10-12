@@ -52,6 +52,7 @@ model Wallet {
   userId    Int
   name      String   @default("Main Wallet")
   isDefault Boolean  @default(true)
+  balance   Decimal  @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
