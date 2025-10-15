@@ -54,6 +54,7 @@ export const login = async (
 export const logout = async (_: Request, res: Response) => {
     // Clear the cookie by setting same name + empty value
     res.clearCookie("token", COOKIE_OPTIONS);
+
     res.status(200).json({ success: true, message: "Logged out successfully" });
 };
 
@@ -62,7 +63,12 @@ export const me = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.id!;
         const user = await meService(userId);
-        res.status(200).json({ success: true, user });
+
+        res.status(200).json({
+            success: true,
+            user,
+            message: "User profile retrieved successfully",
+        });
     } catch (error) {
         next(error);
     }

@@ -61,7 +61,7 @@ export const createTransaction = async (
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = await createTransactionSchema.parse(req.body);
+        const parsed = createTransactionSchema.parse(req.body);
 
         const transaction = await createTransactionService(userId, parsed);
 
@@ -87,7 +87,7 @@ export const deleteTransaction = async (
             id: Number(req.params.id),
         });
 
-        const result = await deleteTransactionService(userId, parsed);
+        await deleteTransactionService(userId, parsed);
 
         res.status(200).json({
             success: true,

@@ -43,7 +43,7 @@ export const createCategory = async (
 
         res.status(201).json({
             success: true,
-            category: category,
+            category,
             message: "Category created successfully",
         });
     } catch (error) {
@@ -66,7 +66,7 @@ export const deleteCategory = async (
 
         res.status(200).json({
             success: true,
-            category: category,
+            category,
             message: "Category deleted successfully",
         });
     } catch (error) {
