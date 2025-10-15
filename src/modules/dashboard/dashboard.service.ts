@@ -1,7 +1,9 @@
 import { prisma } from "../../config/db";
 import {
     DashboardChartsInput,
+    DashboardRecentActivityInput,
     DashboardSummaryInput,
+    DashboardTopCategoriesInput,
 } from "./dashboard.validation";
 
 // --- GET SUMMARY ---
@@ -141,4 +143,82 @@ export const getDashboardChartsService = async (
         byCategory: byCategoryData,
         byMonth,
     };
+};
+
+// --- GET TOP CATEGORIES (BY EXPENSE) ---
+export const getDashboardTopCategoriesService = async (
+    userId: number,
+    data: DashboardTopCategoriesInput
+) => {
+    const { limit, startDate, endDate } = data.query || {};
+
+    const where = {
+        userId,
+        kind: "expense" as const,
+        ...(startDate && endDate
+            ? {
+                  occurredAt: {
+                      gte: new Date(startDate),
+                      lte: new Date(endDate),
+                  },
+              }
+            : {}),
+    };
+
+    const topCategories = await prisma.transaction.groupBy({
+        by: ["categoryId"],
+        _sum: { amount: true },
+        where,
+        orderBy: {
+            _sum: {
+                amount: "desc",
+            },
+        },
+        take: limit ?? 5,
+    });
+
+    const categoryIds = topCategories.map((c) => c.categoryId);
+    const categories = await prisma.category.findMany({
+        where: { id: { in: categoryIds } },
+        select: { id: true, name: true },
+    });
+
+    const result = topCategories.map((item) => {
+        const category = categories.find((c) => c.id === item.categoryId);
+        return {
+            category: category?.name ?? "Unknown",
+            total: Number(item._sum.amount ?? 0),
+        };
+    });
+
+    return result;
+};
+
+// --- GET RECENT ACTIVITY ---
+export const getDashboardRecentActivityService = async (
+    userId: number,
+    data: DashboardRecentActivityInput
+) => {
+    const { limit } = data.query || {};
+
+    const recent = await prisma.transaction.findMany({
+        where: { userId },
+        // include block tells Prisma to also fetch each transaction’s category and wallet (foreign-key relations), but only their name fields.
+        include: {
+            category: { select: { name: true } },
+            wallet: { select: { name: true } },
+        },
+        orderBy: { occurredAt: "desc" },
+        take: limit ?? 5,
+    });
+
+    return recent.map((txn) => ({
+        id: txn.id,
+        kind: txn.kind,
+        amount: Number(txn.amount),
+        note: txn.note,
+        category: txn.category.name,
+        wallet: txn.wallet.name,
+        occurredAt: txn.occurredAt,
+    }));
 };
