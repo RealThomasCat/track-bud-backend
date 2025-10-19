@@ -11,6 +11,11 @@ export const env = {
     nodeEnv: process.env.NODE_ENV || "development",
     jwtSecret: process.env.JWT_SECRET || "",
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    geminiApiKey: process.env.GEMINI_API_KEY || "",
 };
+
+if (!env.geminiApiKey) {
+    throw new Error("Missing GEMINI_API_KEY in environment variables.");
+}
 
 // NOTE: No DatabaseUrl here because Prisma CLI commands (prisma generate, prisma migrate) automatically read it from .env.

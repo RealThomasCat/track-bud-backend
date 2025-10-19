@@ -23,6 +23,7 @@
     },
     "homepage": "https://github.com/RealThomasCat/track-bud-backend#readme",
     "dependencies": {
+        "@google/genai": "^1.25.0",
         "@prisma/client": "^6.16.3",
         "bcryptjs": "^3.0.2",
         "cookie-parser": "^1.4.7",
