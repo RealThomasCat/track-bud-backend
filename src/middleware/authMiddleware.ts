@@ -1,3 +1,4 @@
+import { env } from "../config/env";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
@@ -17,7 +18,7 @@ export const authenticate = (
         }
 
         // Verify JWT signature
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+        const decoded = jwt.verify(token, env.jwtSecret!);
         req.user = decoded as { id: number }; // attach user info to request
         next();
     } catch (error) {

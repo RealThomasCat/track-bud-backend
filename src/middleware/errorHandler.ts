@@ -4,6 +4,7 @@
 // Returns consistent JSON error responses
 
 import { Request, Response, NextFunction } from "express";
+// import { env } from "../config/env";
 
 // Global error-handling middleware
 export const errorHandler = (
@@ -23,6 +24,6 @@ export const errorHandler = (
         success: false,
         message,
         // Optional for debugging during dev only:
-        // stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+        // stack: env.nodeEnv === "development" ? err.stack : undefined,
     });
 };
