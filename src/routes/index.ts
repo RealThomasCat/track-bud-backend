@@ -3,6 +3,7 @@ import authRoutes from "../modules/auth/auth.routes";
 import categoryRoutes from "../modules/categories/category.routes";
 import transactionRoutes from "../modules/transactions/transaction.routes";
 import dashboardRoutes from "../modules/dashboard/dashboard.routes";
+import aiRoutes from "../modules/ai/ai.routes";
 
 const router = Router();
 
@@ -11,5 +12,6 @@ router.use("/auth", authRoutes);
 router.use("/categories", categoryRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/dashboard", dashboardRoutes);
+router.use("/ai", aiRoutes);
 
 export default router;
