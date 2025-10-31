@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
 const JWT_SECRET = env.jwtSecret!;
-const JWT_EXPIRES_IN = "1h"; // ⏱ short lifespan for safety
+const JWT_EXPIRES_IN = "1h";
 
 // Sign JWT containing only userId
 export const signToken = (userId: number) => {
