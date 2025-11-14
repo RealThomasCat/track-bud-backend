@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import routes from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { env } from "./config/env";
+import { prisma } from "./config/db";
 
 const app = express();
 
@@ -25,15 +26,26 @@ app.use(
     })
 );
 
+// DB TEST ROUTE
+app.get("/db-test", async (_req: Request, res: Response) => {
+    try {
+        const users = await prisma.user.findMany();
+        res.json(users);
+    } catch (error) {
+        console.error("DB test failed:", error);
+        res.status(500).json({ error: "DB connection failed" });
+    }
+});
+
 // Routes
 app.use("/", routes);
 
-// Health Check Route
+// Health Check
 app.get("/", (_req: Request, res: Response) => {
     res.send("Expense Tracker API running...");
 });
 
-// 404 Handler (optional but clean)
+// 404 Handler
 app.use((_req: Request, res: Response) => {
     res.status(404).json({
         success: false,
@@ -41,7 +53,7 @@ app.use((_req: Request, res: Response) => {
     });
 });
 
-// Global Error Handler (must be last)
+// Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     errorHandler(err, req, res, next);
 });
