@@ -13,7 +13,7 @@ export const signToken = (userId: number) => {
 export const COOKIE_OPTIONS = {
     httpOnly: true, // cannot be accessed via JS (protects from XSS)
     secure: env.nodeEnv === "production", // send only over HTTPS in production
-    sameSite: "strict" as const, // prevents CSRF (If frontend and backend on different domains, switch to 'none'.)
+    sameSite: env.nodeEnv === "production" ? "none" : "lax",
     path: "/", // cookie sent with every request
     maxAge: 60 * 60 * 1000, // 1 hour (matches token expiry)
 };
