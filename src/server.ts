@@ -1,5 +1,4 @@
 import app from "./app";
-import { env } from "./config/env";
 
 // Render always provides process.env.PORT at runtime
 // So we read it directly here instead of from env.ts

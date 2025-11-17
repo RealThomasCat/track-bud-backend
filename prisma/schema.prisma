@@ -16,8 +16,9 @@ generator client {
 datasource db {
   // We're using PostgreSQL
   provider = "postgresql"
-  // Reads from the DATABASE_URL variable in .env
+  // Reads from the DATABASE_URL and DIRECT_URL variables in .env
   url      = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 // --------------------------
