@@ -19,4 +19,5 @@ export const COOKIE_OPTIONS = {
     sameSite: sameSiteValue,
     path: "/", // cookie sent with every request
     maxAge: 60 * 60 * 1000, // 1 hour (matches token expiry)
+    partitioned: true, // CHIPS requirement for cross-site cookies
 };
