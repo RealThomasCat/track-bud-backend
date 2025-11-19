@@ -13,7 +13,14 @@ import { prisma } from "./config/db";
 const app = express();
 
 // Core Middlewares
-app.use(helmet());
+app.use(
+    // Override Helmet defaults so that Render backend can respond to Vercel frontend
+    helmet({
+        contentSecurityPolicy: false,
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+    })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
