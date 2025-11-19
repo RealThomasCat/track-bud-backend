@@ -12,6 +12,8 @@ export const signToken = (userId: number) => {
 const sameSiteValue: "none" | "lax" | "strict" =
     env.nodeEnv === "production" ? "none" : "lax";
 
+const partitionedValue: boolean = env.nodeEnv === "production" ? true : false;
+
 // Standard cookie config used everywhere
 export const COOKIE_OPTIONS = {
     httpOnly: true, // cannot be accessed via JS (protects from XSS)
@@ -19,5 +21,5 @@ export const COOKIE_OPTIONS = {
     sameSite: sameSiteValue,
     path: "/", // cookie sent with every request
     maxAge: 60 * 60 * 1000, // 1 hour (matches token expiry)
-    partitioned: true, // CHIPS requirement for cross-site cookies
+    partitioned: partitionedValue, // for cross-site contexts
 };
