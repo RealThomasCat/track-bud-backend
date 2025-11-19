@@ -14,11 +14,11 @@ const app = express();
 
 // Core Middlewares
 app.use(
-    // Override Helmet defaults so that Render backend can respond to Vercel frontend
     helmet({
         contentSecurityPolicy: false,
-        crossOriginEmbedderPolicy: false,
+        crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
         crossOriginResourcePolicy: { policy: "cross-origin" },
+        crossOriginEmbedderPolicy: false,
     })
 );
 app.use(express.json());
@@ -30,6 +30,8 @@ app.use(
     cors({
         origin: env.frontendUrl,
         credentials: true,
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
     })
 );
 
