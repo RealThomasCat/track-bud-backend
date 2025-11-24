@@ -35,16 +35,13 @@ app.use(
     })
 );
 
-// DB TEST ROUTE
-app.get("/db-test", async (_req: Request, res: Response) => {
-    try {
+// DB TEST ROUTE (Restricted DB test to development only)
+if (process.env.NODE_ENV !== "production") {
+    app.get("/db-test", async (_req, res) => {
         const users = await prisma.user.findMany();
         res.json(users);
-    } catch (error) {
-        console.error("DB test failed:", error);
-        res.status(500).json({ error: "DB connection failed" });
-    }
-});
+    });
+}
 
 // Routes
 app.use("/", routes);
