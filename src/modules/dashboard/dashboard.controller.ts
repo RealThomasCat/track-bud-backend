@@ -20,7 +20,14 @@ export const getDashboardSummary = async (
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = dashboardSummarySchema.parse({ query: req.query }); // Write explanation for {query: req.query}
+        const parsed = dashboardSummarySchema.parse({ query: req.query });
+
+        // Explanation for {query: req.query}
+        // Because the schema expects an object with a 'query' property,
+        // we wrap req.query in another object to match that structure.
+        // req.query is { startDate?: string; endDate?: string }
+        // So we pass { query: req.query } to satisfy the schema.
+        // Which becomes { query: { startDate?: string; endDate?: string } }
 
         const summary = await getDashboardSummaryService(userId, parsed);
 

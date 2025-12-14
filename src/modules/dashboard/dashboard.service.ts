@@ -29,10 +29,10 @@ export const getDashboardSummaryService = async (
             : {}),
     };
 
-    // Run two queries in parallel: one for total income and one for total expense
-    // We use Promise.all() here to improve performance because both queries are independent and can safely run in parallel.
+    // Run three queries in parallel: one for total income, one for total expense, and one for transaction count
+    // We use Promise.all() here to improve performance because all queries are independent and can safely run in parallel.
     // If we awaited them sequentially, it would take longer (sum of both query times instead of the max of both).
-    const [income, expense] = await Promise.all([
+    const [income, expense, count] = await Promise.all([
         prisma.transaction.aggregate({
             _sum: { amount: true },
             where: { ...where, kind: "income" },
@@ -40,6 +40,9 @@ export const getDashboardSummaryService = async (
         prisma.transaction.aggregate({
             _sum: { amount: true },
             where: { ...where, kind: "expense" },
+        }),
+        prisma.transaction.count({
+            where,
         }),
     ]);
 
@@ -51,6 +54,7 @@ export const getDashboardSummaryService = async (
         totalIncome,
         totalExpense,
         balance: totalIncome - totalExpense,
+        transactionCount: count,
     };
 };
 
