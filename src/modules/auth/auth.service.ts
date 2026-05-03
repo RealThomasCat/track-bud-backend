@@ -2,6 +2,7 @@ import { prisma } from "../../config/db";
 import { hashPassword, comparePassword } from "../../utils/hash";
 import { signToken } from "../../utils/jwt";
 import { SignupInput, LoginInput } from "./auth.validation";
+import { DEFAULT_CATEGORIES } from "../../constants/defaultCategories";
 
 // --- CREATE USER ---
 export const signupService = async (data: SignupInput) => {
@@ -17,20 +18,6 @@ export const signupService = async (data: SignupInput) => {
 
     // Hash password before saving
     const hashed = await hashPassword(data.password);
-
-    // Default categories (TODO: move to separate file)
-    const defaultCategories = [
-        "Food",
-        "Transport",
-        "Rent",
-        "Utilities",
-        "Health",
-        "Entertainment",
-        "Shopping",
-        "Salary",
-        "Investments",
-        "Miscellaneous",
-    ];
 
     // Use transaction for multiple related database operations
     const result = await prisma.$transaction(async (tx) => {
@@ -54,7 +41,7 @@ export const signupService = async (data: SignupInput) => {
 
         // Create default categories for the new user
         await tx.category.createMany({
-            data: defaultCategories.map((name) => ({
+            data: DEFAULT_CATEGORIES.map((name) => ({
                 name,
                 userId: user.id,
                 isDefault: true,
