@@ -18,6 +18,14 @@ export const errorHandler = (
 ) => {
     console.error("Error:", err);
 
+    // Handle custom AppError instances
+    if (err instanceof AppError) {
+        return res.status(err.statusCode).json({
+            success: false,
+            message: err.message,
+        });
+    }
+
     // Handle Zod validation errors
     if (err instanceof ZodError) {
         return res.status(400).json({
@@ -27,6 +35,22 @@ export const errorHandler = (
                 field: issue.path.join("."),
                 message: issue.message,
             })),
+        });
+    }
+
+    // Handle Prisma validation errors
+    if (err instanceof Prisma.PrismaClientValidationError) {
+        return res.status(400).json({
+            success: false,
+            message: "Invalid request",
+        });
+    }
+
+    // Handle Prisma initialization errors
+    if (err instanceof Prisma.PrismaClientInitializationError) {
+        return res.status(503).json({
+            success: false,
+            message: "Service temporarily unavailable",
         });
     }
 
@@ -65,14 +89,6 @@ export const errorHandler = (
                     message: "Database request failed",
                 });
         }
-    }
-
-    // Handle custom AppError instances
-    if (err instanceof AppError) {
-        return res.status(err.statusCode).json({
-            success: false,
-            message: err.message,
-        });
     }
 
     // For all other errors, return a generic 500 response
