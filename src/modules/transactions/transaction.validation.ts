@@ -1,19 +1,19 @@
 import { z } from "zod";
 
 export const createTransactionSchema = z.object({
-    amount: z.number().positive(),
-    categoryId: z.number(),
+    amount: z.coerce.number().positive(),
+    categoryId: z.coerce.number().int().positive(),
     kind: z.enum(["income", "expense"]),
-    note: z.string().optional(),
+    note: z.string().trim().optional(),
     occurredAt: z
         .string()
         .pipe(
-            z.coerce.date({ message: "occurredAt must be a valid ISO date" })
+            z.coerce.date({ message: "occurredAt must be a valid ISO date" }),
         ),
 });
 
 export const deleteTransactionSchema = z.object({
-    id: z.number(),
+    id: z.coerce.number().int().positive(),
 });
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
