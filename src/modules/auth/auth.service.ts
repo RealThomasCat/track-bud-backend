@@ -35,7 +35,7 @@ export const signupService = async (data: SignupInput) => {
     // Use transaction for multiple related database operations
     const result = await prisma.$transaction(async (tx) => {
         // Create user
-        const user = await prisma.user.create({
+        const user = await tx.user.create({
             data: {
                 name: data.name,
                 email: data.email,
