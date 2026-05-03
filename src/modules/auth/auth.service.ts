@@ -3,6 +3,7 @@ import { hashPassword, comparePassword } from "../../utils/hash";
 import { signToken } from "../../utils/jwt";
 import { SignupInput, LoginInput } from "./auth.validation";
 import { DEFAULT_CATEGORIES } from "../../constants/defaultCategories";
+import { AppError } from "../../utils/AppError";
 
 // --- CREATE USER ---
 export const signupService = async (data: SignupInput) => {
@@ -10,10 +11,9 @@ export const signupService = async (data: SignupInput) => {
     const existing = await prisma.user.findUnique({
         where: { email: data.email },
     });
+
     if (existing) {
-        const err = new Error("Email already registered");
-        (err as any).statusCode = 400;
-        throw err;
+        throw new AppError("Email already registered", 409);
     }
 
     // Hash password before saving
@@ -67,18 +67,16 @@ export const signupService = async (data: SignupInput) => {
 // --- LOGIN USER ---
 export const loginService = async (data: LoginInput) => {
     const user = await prisma.user.findUnique({ where: { email: data.email } });
+
     if (!user) {
-        const err = new Error("Invalid credentials");
-        (err as any).statusCode = 401;
-        throw err;
+        throw new AppError("Invalid credentials", 401);
     }
 
     // Compare plaintext and hashed passwords
     const isValid = await comparePassword(data.password, user.password);
+
     if (!isValid) {
-        const err = new Error("Invalid credentials");
-        (err as any).statusCode = 401;
-        throw err;
+        throw new AppError("Invalid credentials", 401);
     }
 
     const token = signToken(user.id);
@@ -97,9 +95,7 @@ export const meService = async (userId: number) => {
     });
 
     if (!user) {
-        const err = new Error("User not found");
-        (err as any).statusCode = 404;
-        throw err;
+        throw new AppError("User not found", 404);
     }
 
     return user;
