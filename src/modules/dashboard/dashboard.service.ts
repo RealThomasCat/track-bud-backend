@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/db";
 import {
     DashboardChartsInput,
@@ -9,7 +10,7 @@ import {
 // --- GET SUMMARY ---
 export const getDashboardSummaryService = async (
     userId: number,
-    data: DashboardSummaryInput
+    data: DashboardSummaryInput,
 ) => {
     // Extract date range from query parameters
     const { startDate, endDate } = data.query || {};
@@ -61,7 +62,7 @@ export const getDashboardSummaryService = async (
 // --- GET CHARTS ---
 export const getDashboardChartsService = async (
     userId: number,
-    data: DashboardChartsInput
+    data: DashboardChartsInput,
 ) => {
     const { startDate, endDate } = data.query || {};
 
@@ -97,7 +98,7 @@ export const getDashboardChartsService = async (
     // Fetch category names for the extracted category IDs
     // Example of categories: [{ id: 1, name: "Food" }, { id: 2, name: "Rent" }]
     const categories = await prisma.category.findMany({
-        where: { id: { in: categoryIds } },
+        where: { id: { in: categoryIds }, userId },
         select: { id: true, name: true },
     });
 
@@ -113,7 +114,7 @@ export const getDashboardChartsService = async (
         // Return object with category name and total amount
         return {
             category: category?.name ?? "Unknown",
-            total: item._sum.amount ?? 0,
+            total: Number(item._sum.amount ?? 0),
         };
     });
 
@@ -124,7 +125,7 @@ export const getDashboardChartsService = async (
     // Sums income & expense separately per month
     // Returns sorted timeline data like: [{ month: "2023-01", income: 5000, expense: 2000 }, ...]
     const byMonth = await prisma.$queryRaw<
-        { month: string; income: number; expense: number }[]
+        { month: string; income: Prisma.Decimal; expense: Prisma.Decimal }[]
     >`
     SELECT
       to_char("occurredAt", 'YYYY-MM') AS month,
@@ -134,8 +135,8 @@ export const getDashboardChartsService = async (
     WHERE "userId" = ${userId}
     ${
         startDate && endDate
-            ? `AND "occurredAt" BETWEEN '${startDate}' AND '${endDate}'`
-            : ""
+            ? Prisma.sql`AND "occurredAt" BETWEEN ${new Date(startDate)} AND ${new Date(endDate)}`
+            : Prisma.empty
     }
     GROUP BY month
     ORDER BY month ASC;
@@ -144,16 +145,23 @@ export const getDashboardChartsService = async (
     // -> to_char() is a PostgreSQL function that converts a date/timestamp into a text (string) in a specified format.
     // -> Here specified format is 'YYYY-MM' which extracts the year and month part of the occurredAt timestamp.
 
+    // PostgreSQL decimal sums may come back as Prisma Decimal, so return frontend-friendly numbers
+    const byMonthData = byMonth.map((item) => ({
+        month: item.month,
+        income: Number(item.income),
+        expense: Number(item.expense),
+    }));
+
     return {
         byCategory: byCategoryData,
-        byMonth,
+        byMonth: byMonthData,
     };
 };
 
 // --- GET TOP CATEGORIES (BY EXPENSE) ---
 export const getDashboardTopCategoriesService = async (
     userId: number,
-    data: DashboardTopCategoriesInput
+    data: DashboardTopCategoriesInput,
 ) => {
     const { limit, startDate, endDate } = data.query || {};
 
@@ -183,8 +191,9 @@ export const getDashboardTopCategoriesService = async (
     });
 
     const categoryIds = topCategories.map((c) => c.categoryId);
+
     const categories = await prisma.category.findMany({
-        where: { id: { in: categoryIds } },
+        where: { id: { in: categoryIds }, userId },
         select: { id: true, name: true },
     });
 
@@ -202,7 +211,7 @@ export const getDashboardTopCategoriesService = async (
 // --- GET RECENT ACTIVITY ---
 export const getDashboardRecentActivityService = async (
     userId: number,
-    data: DashboardRecentActivityInput
+    data: DashboardRecentActivityInput,
 ) => {
     const { limit } = data.query || {};
 
