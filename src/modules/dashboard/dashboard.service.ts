@@ -119,12 +119,13 @@ export const getDashboardChartsService = async (
 
     // GROUP BY MONTH
     // Executes a raw SQL query (Postgres syntax) because Prisma groupBy can’t group by a computed field like YYYY-MM
+    // We are now using safe raw query instead of unsafe raw query like before to prevent SQL injection risks
     // Extracts the month (YYYY-MM) from occurredAt
     // Sums income & expense separately per month
     // Returns sorted timeline data like: [{ month: "2023-01", income: 5000, expense: 2000 }, ...]
-    const byMonth = await prisma.$queryRawUnsafe<
+    const byMonth = await prisma.$queryRaw<
         { month: string; income: number; expense: number }[]
-    >(`
+    >`
     SELECT
       to_char("occurredAt", 'YYYY-MM') AS month,
       SUM(CASE WHEN kind = 'income' THEN amount ELSE 0 END) AS income,
@@ -138,7 +139,7 @@ export const getDashboardChartsService = async (
     }
     GROUP BY month
     ORDER BY month ASC;
-  `);
+`;
     // NOTE:
     // -> to_char() is a PostgreSQL function that converts a date/timestamp into a text (string) in a specified format.
     // -> Here specified format is 'YYYY-MM' which extracts the year and month part of the occurredAt timestamp.
