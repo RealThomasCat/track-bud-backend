@@ -1,23 +1,95 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/db";
 import {
     CreateTransactionInput,
     DeleteTransactionInput,
+    GetTransactionsQueryInput,
 } from "./transaction.validation";
+import { AppError } from "../../utils/AppError";
 
 // --- GET TRANSACTIONS ---
-export const getTransactionsService = async (userId: number) => {
-    const transactions = await prisma.transaction.findMany({
-        where: { userId },
-        orderBy: { occurredAt: "desc" },
-    });
+export const getTransactionsService = async (
+    userId: number,
+    query: GetTransactionsQueryInput,
+) => {
+    const { limit, cursor, kind, startDate, endDate } = query;
+    // Validate cursor ownership before using it.
+    // This prevents users from passing another user's transaction id as a cursor.
+    if (cursor) {
+        const cursorTransaction = await prisma.transaction.findFirst({
+            where: {
+                id: cursor,
+                userId,
+            },
+            // Only return id to minimize data transfer since we only need to validate existence and ownership.
+            select: {
+                id: true,
+            },
+        });
 
-    if (!transactions) {
-        const err = new Error("No transactions found");
-        (err as any).statusCode = 404;
-        throw err;
+        // If cursor transaction not found or doesn't belong to user, return 400 error.
+        if (!cursorTransaction) {
+            throw new AppError("Invalid transaction cursor", 400);
+        }
     }
 
-    return transactions;
+    // Prisma.TransactionWhereInput usage here because we can leverage it to conditionally add filters based on optional query params.
+    // We are using it here because this where object is getting a bit complex with multiple optional filters,
+    // and Prisma's type system allows us to build it incrementally in a type-safe way.
+    const where: Prisma.TransactionWhereInput = {
+        userId,
+        ...(kind ? { kind } : {}),
+        ...(startDate || endDate
+            ? {
+                  occurredAt: {
+                      ...(startDate ? { gte: startDate } : {}),
+                      ...(endDate ? { lte: endDate } : {}),
+                  },
+              }
+            : {}),
+    };
+
+    const transactions = await prisma.transaction.findMany({
+        where,
+        // Deterministic ordering matters for pagination.
+        // id breaks ties when multiple transactions have the same occurredAt.
+        orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
+        // If cursor is provided, skip all rows up to and including the cursor transaction.
+        ...(cursor
+            ? {
+                  cursor: {
+                      id: cursor,
+                  },
+                  skip: 1,
+              }
+            : {}),
+        // Fetch one extra row to know whether another page exists.
+        take: limit + 1,
+    });
+
+    // Check if we have more rows than the limit, which indicates there is a next page.
+    const hasNextPage = transactions.length > limit;
+
+    // If there is a next page, remove the extra row before returning results.
+    const paginatedTransactions = hasNextPage
+        ? transactions.slice(0, limit)
+        : transactions;
+
+    // Id of the last transaction in the current page will be the next cursor for pagination.
+    const lastTransaction = paginatedTransactions.at(-1);
+
+    // The next cursor will be the id of the last transaction in the current page.
+    const nextCursor =
+        hasNextPage && lastTransaction ? lastTransaction.id : null;
+
+    return {
+        transactions: paginatedTransactions,
+        pagination: {
+            limit,
+            nextCursor,
+            hasNextPage,
+        },
+    };
 };
 
 // --- GET TRANSACTION BY ID ---

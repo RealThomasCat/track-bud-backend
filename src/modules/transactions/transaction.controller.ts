@@ -8,21 +8,25 @@ import {
 import {
     createTransactionSchema,
     deleteTransactionSchema,
+    getTransactionsQuerySchema,
 } from "./transaction.validation";
 
 // --- GET TRANSACTIONS ---
 export const getTransactions = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const transactions = await getTransactionsService(userId);
+        const parsedQuery = getTransactionsQuerySchema.parse(req.query);
+
+        const result = await getTransactionsService(userId, parsedQuery);
 
         res.status(200).json({
             success: true,
-            transactions,
+            transactions: result.transactions,
+            pagination: result.pagination,
             message: "Transactions retrieved successfully",
         });
     } catch (error) {
