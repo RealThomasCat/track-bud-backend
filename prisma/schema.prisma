@@ -74,6 +74,8 @@ model Category {
   transactions Transaction[]
 
   @@unique([userId, name])
+  // Speeds up finding user's active/archived categories
+  @@index([userId, isArchived], map: "idx_categories_user_archived")
 }
 
 model Transaction {
@@ -91,4 +93,11 @@ model Transaction {
   user     User     @relation(fields: [userId], references: [id])
   wallet   Wallet   @relation(fields: [walletId], references: [id])
   category Category @relation(fields: [categoryId], references: [id])
+
+  // Speeds up queries for user's transactions and date range
+  @@index([userId, occurredAt], map: "idx_transactions_user_occurred_at")
+  // Speeds up queries for user's transactions filtered by kind and date range
+  @@index([userId, kind, occurredAt], map: "idx_transactions_user_kind_occurred_at")
+  // Speeds up queries for user's transactions filtered by category and date range
+  @@index([userId, categoryId, occurredAt], map: "idx_transactions_user_category_occurred_at")
 }
