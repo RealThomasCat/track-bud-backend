@@ -34,6 +34,8 @@ enum TransactionKind {
 // Models (Tables)
 // --------------------------
 
+// User deletion is intentionally not exposed through the API.
+// onDelete: Restrict protects financial records from accidental user deletion.
 model User {
   id              Int      @id @default(autoincrement())
   name            String
@@ -48,17 +50,28 @@ model User {
   transactions Transaction[]
 }
 
+// TODO: Add PostgreSQL partial unique index in a manual migration:
+// CREATE UNIQUE INDEX uq_wallet_one_default_per_user
+// ON "Wallet" ("userId")
+// WHERE "isDefault" = true;
 model Wallet {
   id        Int      @id @default(autoincrement())
   userId    Int
   name      String   @default("Main Wallet")
-  isDefault Boolean  @default(true)
-  balance   Decimal  @default(0)
+  isDefault Boolean  @default(false)
+  balance   Decimal  @default(0) @db.Decimal(14, 2)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id])
+  // Foreign key relation to User with Restrict on delete to prevent orphaned wallets if user is deleted
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   transactions Transaction[]
+
+  // Enforce unique wallet names per user
+  @@unique([userId, name], map: "uq_wallet_user_id_name")
+  // Allows Transaction(userId, walletId) to reference Wallet(userId, id).
+  // To be able to use composite FK (userId, walletId) in Transaction model, we need to enforce uniqueness on (userId, id) in Wallet.
+  @@unique([userId, id], map: "uq_wallet_user_id_id")
 }
 
 model Category {
@@ -70,10 +83,13 @@ model Category {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id])
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   transactions Transaction[]
 
-  @@unique([userId, name])
+  @@unique([userId, name], map: "uq_category_user_id_name")
+  // Allows Transaction(userId, categoryId) to reference Category(userId, id).
+  // To be able to use composite FK (userId, categoryId) in Transaction model, we need to enforce uniqueness on (userId, id) in Category.
+  @@unique([userId, id], map: "uq_category_user_id_id")
   // Speeds up finding user's active/archived categories
   @@index([userId, isArchived], map: "idx_categories_user_archived")
 }
@@ -84,15 +100,18 @@ model Transaction {
   walletId   Int
   categoryId Int
   kind       TransactionKind
-  amount     Decimal
+  amount     Decimal         @db.Decimal(14, 2)
   occurredAt DateTime
   note       String?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
-  user     User     @relation(fields: [userId], references: [id])
-  wallet   Wallet   @relation(fields: [walletId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
+  // Foreign key relations with Restrict on delete to prevent orphaned transactions if user/wallet/category is deleted
+  user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  // Composite FK guarantees the wallet belongs to the same user as the transaction.
+  wallet   Wallet   @relation(fields: [userId, walletId], references: [userId, id], onDelete: Restrict)
+  // Composite FK guarantees the category belongs to the same user as the transaction.
+  category Category @relation(fields: [userId, categoryId], references: [userId, id], onDelete: Restrict)
 
   // Speeds up queries for user's transactions and date range
   @@index([userId, occurredAt], map: "idx_transactions_user_occurred_at")
