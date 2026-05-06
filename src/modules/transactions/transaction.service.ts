@@ -99,9 +99,7 @@ export const getTransactionByIdService = async (userId: number, id: number) => {
     });
 
     if (!transaction) {
-        const err = new Error("Transaction not found");
-        (err as any).statusCode = 404;
-        throw err;
+        throw new AppError("Transaction not found", 404);
     }
 
     return transaction;
@@ -127,9 +125,7 @@ export const createTransactionService = async (
         });
 
         if (!category) {
-            const err = new Error("Invalid or archived category");
-            (err as any).statusCode = 404;
-            throw err;
+            throw new AppError("Invalid or archived category", 404);
         }
 
         // Fetch default wallet
@@ -138,9 +134,7 @@ export const createTransactionService = async (
         });
 
         if (!wallet) {
-            const err = new Error("Wallet not found");
-            (err as any).statusCode = 404;
-            throw err;
+            throw new AppError("Default wallet not found", 404);
         }
 
         // Create the transaction record
@@ -188,9 +182,7 @@ export const deleteTransactionService = async (
         });
 
         if (!transaction) {
-            const err = new Error("Transaction not found");
-            (err as any).statusCode = 404;
-            throw err;
+            throw new AppError("Transaction not found", 404);
         }
 
         // Delete the transaction
