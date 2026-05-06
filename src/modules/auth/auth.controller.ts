@@ -10,8 +10,8 @@ export const signup = async (
     next: NextFunction,
 ) => {
     try {
-        const data = signupSchema.parse(req.body);
-        const result = await signupService(data);
+        const parsed = signupSchema.parse(req.body);
+        const result = await signupService(parsed);
 
         // Send JWT via secure HTTP-only cookie
         res.cookie("token", result.token, COOKIE_OPTIONS);
@@ -33,8 +33,8 @@ export const login = async (
     next: NextFunction,
 ) => {
     try {
-        const data = loginSchema.parse(req.body);
-        const result = await loginService(data);
+        const parsed = loginSchema.parse(req.body);
+        const result = await loginService(parsed);
 
         // Send JWT via cookie instead of JSON body
         res.cookie("token", result.token, COOKIE_OPTIONS);
