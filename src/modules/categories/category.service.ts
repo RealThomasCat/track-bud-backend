@@ -1,4 +1,5 @@
 import { prisma } from "../../config/db";
+import { AppError } from "../../utils/AppError";
 import {
     CreateCategoryInput,
     DeleteCategoryInput,
@@ -23,7 +24,7 @@ export const getCategoriesService = async (userId: number) => {
 // --- CREATE CATEGORY ---
 export const createCategoryService = async (
     userId: number,
-    data: CreateCategoryInput
+    data: CreateCategoryInput,
 ) => {
     try {
         // NOTE: We are not manually checking for exsisting category names here.
@@ -45,9 +46,7 @@ export const createCategoryService = async (
     } catch (error: any) {
         // Handle unique constraint violation (e.g., duplicate category name)
         if (error.code === "P2002") {
-            const err = new Error("Category name already exists");
-            (err as any).statusCode = 400;
-            throw err;
+            throw new AppError("Category name already exists", 400);
         }
         throw error;
     }
@@ -56,7 +55,7 @@ export const createCategoryService = async (
 // --- DELETE CATEGORY ---
 export const deleteCategoryService = async (
     userId: number,
-    data: DeleteCategoryInput
+    data: DeleteCategoryInput,
 ) => {
     // Check if category exists, belongs to the user and is not already archived
     const existing = await prisma.category.findFirst({
@@ -64,16 +63,12 @@ export const deleteCategoryService = async (
     });
 
     if (!existing) {
-        const err = new Error("Category not found");
-        (err as any).statusCode = 404;
-        throw err;
+        throw new AppError("Category not found", 404);
     }
 
     // Prevent deletion of default categories
     if (existing.isDefault) {
-        const err = new Error("Default categories cannot be deleted");
-        (err as any).statusCode = 403;
-        throw err;
+        throw new AppError("Default categories cannot be deleted", 403);
     }
 
     // Soft delete: Mark the category as archived instead of deleting it

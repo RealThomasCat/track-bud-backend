@@ -13,7 +13,7 @@ import {
 export const getCategories = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
@@ -33,13 +33,13 @@ export const getCategories = async (
 export const createCategory = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const data = createCategorySchema.parse(req.body);
+        const parsed = createCategorySchema.parse(req.body);
 
-        const category = await createCategoryService(userId, data);
+        const category = await createCategoryService(userId, parsed);
 
         res.status(201).json({
             success: true,
@@ -55,14 +55,13 @@ export const createCategory = async (
 export const deleteCategory = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const id = Number(req.params.id); // Get id from URL params
-        const data = deleteCategorySchema.parse({ id });
+        const parsed = deleteCategorySchema.parse(req.params);
 
-        const category = await deleteCategoryService(userId, data);
+        const category = await deleteCategoryService(userId, parsed);
 
         res.status(200).json({
             success: true,
