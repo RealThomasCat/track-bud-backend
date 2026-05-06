@@ -7,7 +7,7 @@ import { COOKIE_OPTIONS } from "../../utils/jwt";
 export const signup = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const data = signupSchema.parse(req.body);
@@ -30,7 +30,7 @@ export const signup = async (
 export const login = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const data = loginSchema.parse(req.body);
@@ -57,11 +57,11 @@ export const logout = async (
     next: NextFunction,
 ) => {
     try {
-    // Create a shallow copy of COOKIE_OPTIONS without maxAge
-    const { maxAge, ...clearOptions } = COOKIE_OPTIONS;
+        // Create a shallow copy of COOKIE_OPTIONS without maxAge
+        const { maxAge, ...clearOptions } = COOKIE_OPTIONS;
 
-    // Clear the cookie by setting same name + empty value
-    res.clearCookie("token", clearOptions); // Use same options except maxAge
+        // Clear the cookie by setting same name + empty value
+        res.clearCookie("token", clearOptions); // Use same options except maxAge
 
         res.status(200).json({
             success: true,
@@ -75,6 +75,7 @@ export const logout = async (
 // --- GET CURRENT USER ---
 export const me = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // TODO: Use utils/request.ts getUserId helper as type-safe alternative to req.user?.id in future
         const userId = req.user?.id!;
         const user = await meService(userId);
 
