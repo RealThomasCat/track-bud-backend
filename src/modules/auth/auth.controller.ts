@@ -51,14 +51,25 @@ export const login = async (
 
 // --- LOGOUT ---
 // Clears the cookie from browser (server-side logout)
-export const logout = async (_: Request, res: Response) => {
+export const logout = async (
+    _req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
     // Create a shallow copy of COOKIE_OPTIONS without maxAge
     const { maxAge, ...clearOptions } = COOKIE_OPTIONS;
 
     // Clear the cookie by setting same name + empty value
     res.clearCookie("token", clearOptions); // Use same options except maxAge
 
-    res.status(200).json({ success: true, message: "Logged out successfully" });
+        res.status(200).json({
+            success: true,
+            message: "Logged out successfully",
+        });
+    } catch (error) {
+        next(error);
+    }
 };
 
 // --- GET CURRENT USER ---
