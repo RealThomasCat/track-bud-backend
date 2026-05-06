@@ -12,12 +12,6 @@ export const getCategoriesService = async (userId: number) => {
         orderBy: { createdAt: "desc" },
     });
 
-    if (!categories) {
-        const err = new Error("No categories found");
-        (err as any).statusCode = 404;
-        throw err;
-    }
-
     return categories;
 };
 
