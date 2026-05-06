@@ -43,7 +43,7 @@ export const getTransactionsService = async (
             ? {
                   occurredAt: {
                       ...(startDate ? { gte: startDate } : {}),
-                      ...(endDate ? { lte: endDate } : {}),
+                      ...(endDate ? { lt: endDate } : {}),
                   },
               }
             : {}),
@@ -115,14 +115,9 @@ export const createTransactionService = async (
     // Extract the relevant fields from the input data
     const { amount, categoryId, kind, note, occurredAt } = data;
 
-    // Prepare occurredAt
-    let transactionDate: Date;
-    if (occurredAt) {
-        transactionDate = new Date(occurredAt);
-        transactionDate.setHours(0, 0, 0, 0); // reset time to midnight
-    } else {
-        transactionDate = new Date(); // current date-time
-    }
+    // Use the validated timestamp from the request.
+    // Do not reset time to midnight because occurredAt should preserve when the transaction happened.
+    const transactionDate = new Date(occurredAt);
 
     // Start a prisma transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
