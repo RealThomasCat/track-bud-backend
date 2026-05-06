@@ -8,6 +8,7 @@ import {
 import {
     createTransactionSchema,
     deleteTransactionSchema,
+    getTransactionByIdSchema,
     getTransactionsQuerySchema,
 } from "./transaction.validation";
 
@@ -38,14 +39,13 @@ export const getTransactions = async (
 export const getTransactionById = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const transaction = await getTransactionByIdService(
-            userId,
-            Number(req.params.id)
-        );
+        const parsed = getTransactionByIdSchema.parse(req.params);
+
+        const transaction = await getTransactionByIdService(userId, parsed.id);
 
         res.status(200).json({
             success: true,
@@ -61,7 +61,7 @@ export const getTransactionById = async (
 export const createTransaction = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
@@ -83,13 +83,11 @@ export const createTransaction = async (
 export const deleteTransaction = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = deleteTransactionSchema.parse({
-            id: Number(req.params.id),
-        });
+        const parsed = deleteTransactionSchema.parse(req.params);
 
         await deleteTransactionService(userId, parsed);
 
