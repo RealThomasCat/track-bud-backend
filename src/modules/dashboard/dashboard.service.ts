@@ -7,28 +7,35 @@ import {
     DashboardTopCategoriesInput,
 } from "./dashboard.validation";
 
+// Helper function to dynamically build the where clause for transaction queries based on userId and optional date range filters.
+const buildDashboardTransactionWhere = (
+    userId: number,
+    startDate?: Date,
+    endDate?: Date,
+): Prisma.TransactionWhereInput => {
+    return {
+        userId,
+        ...(startDate || endDate
+            ? {
+                  occurredAt: {
+                      ...(startDate ? { gte: startDate } : {}),
+                      ...(endDate ? { lt: endDate } : {}),
+                  },
+              }
+            : {}),
+    };
+};
+
 // --- GET SUMMARY ---
 export const getDashboardSummaryService = async (
     userId: number,
     data: DashboardSummaryInput,
 ) => {
     // Extract date range from query parameters
-    const { startDate, endDate } = data.query || {};
+    const { startDate, endDate } = data;
 
-    // Build a dynamic where clause based on presence of date filters for Prisma query
-    // userId is always required to filter transactions for the specific user
-    // Adds date range filter if both startDate and endDate are provided
-    const where = {
-        userId,
-        ...(startDate && endDate
-            ? {
-                  occurredAt: {
-                      gte: new Date(startDate),
-                      lte: new Date(endDate),
-                  },
-              }
-            : {}),
-    };
+    // Use the dynamic where builder function to construct the where clause for transactions based on userId and optional date range filters.
+    const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
     // Run three queries in parallel: one for total income, one for total expense, and one for transaction count
     // We use Promise.all() here to improve performance because all queries are independent and can safely run in parallel.
@@ -64,20 +71,9 @@ export const getDashboardChartsService = async (
     userId: number,
     data: DashboardChartsInput,
 ) => {
-    const { startDate, endDate } = data.query || {};
+    const { startDate, endDate } = data;
 
-    // Filter by user (and optionally by date range)
-    const where = {
-        userId,
-        ...(startDate && endDate
-            ? {
-                  occurredAt: {
-                      gte: new Date(startDate),
-                      lte: new Date(endDate),
-                  },
-              }
-            : {}),
-    };
+    const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
     // GROUP BY CATEGORY
     // Returns total amount per category within the date range. Example:
@@ -133,11 +129,8 @@ export const getDashboardChartsService = async (
       SUM(CASE WHEN kind = 'expense' THEN amount ELSE 0 END) AS expense
     FROM "Transaction"
     WHERE "userId" = ${userId}
-    ${
-        startDate && endDate
-            ? Prisma.sql`AND "occurredAt" BETWEEN ${new Date(startDate)} AND ${new Date(endDate)}`
-            : Prisma.empty
-    }
+    ${startDate ? Prisma.sql`AND "occurredAt" >= ${startDate}` : Prisma.empty}
+    ${endDate ? Prisma.sql`AND "occurredAt" < ${endDate}` : Prisma.empty}
     GROUP BY month
     ORDER BY month ASC;
 `;
@@ -163,20 +156,9 @@ export const getDashboardTopCategoriesService = async (
     userId: number,
     data: DashboardTopCategoriesInput,
 ) => {
-    const { limit, startDate, endDate } = data.query || {};
+    const { limit, startDate, endDate } = data;
 
-    const where = {
-        userId,
-        kind: "expense" as const,
-        ...(startDate && endDate
-            ? {
-                  occurredAt: {
-                      gte: new Date(startDate),
-                      lte: new Date(endDate),
-                  },
-              }
-            : {}),
-    };
+    const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
     const topCategories = await prisma.transaction.groupBy({
         by: ["categoryId"],
@@ -187,7 +169,7 @@ export const getDashboardTopCategoriesService = async (
                 amount: "desc",
             },
         },
-        take: limit ?? 5,
+        take: limit,
     });
 
     const categoryIds = topCategories.map((c) => c.categoryId);
@@ -213,7 +195,7 @@ export const getDashboardRecentActivityService = async (
     userId: number,
     data: DashboardRecentActivityInput,
 ) => {
-    const { limit } = data.query || {};
+    const { limit } = data;
 
     const recent = await prisma.transaction.findMany({
         where: { userId },

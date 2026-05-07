@@ -6,30 +6,23 @@ import {
     getDashboardTopCategoriesService,
 } from "./dashboard.service";
 import {
-    dashboardChartsSchema,
-    dashboardRecentActivitySchema,
-    dashboardSummarySchema,
-    dashboardTopCategoriesSchema,
+    dashboardChartsQuerySchema,
+    dashboardSummaryQuerySchema,
+    dashboardTopCategoriesQuerySchema,
+    dashboardRecentActivityQuerySchema,
 } from "./dashboard.validation";
 
 // --- GET SUMMARY ---
 export const getDashboardSummary = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = dashboardSummarySchema.parse({ query: req.query });
+        const parsedQuery = dashboardSummaryQuerySchema.parse(req.query);
 
-        // Explanation for {query: req.query}
-        // Because the schema expects an object with a 'query' property,
-        // we wrap req.query in another object to match that structure.
-        // req.query is { startDate?: string; endDate?: string }
-        // So we pass { query: req.query } to satisfy the schema.
-        // Which becomes { query: { startDate?: string; endDate?: string } }
-
-        const summary = await getDashboardSummaryService(userId, parsed);
+        const summary = await getDashboardSummaryService(userId, parsedQuery);
 
         res.status(200).json({
             success: true,
@@ -45,13 +38,13 @@ export const getDashboardSummary = async (
 export const getDashboardCharts = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = dashboardChartsSchema.parse({ query: req.query });
+        const parsedQuery = dashboardChartsQuerySchema.parse(req.query);
 
-        const charts = await getDashboardChartsService(userId, parsed);
+        const charts = await getDashboardChartsService(userId, parsedQuery);
 
         res.status(200).json({
             success: true,
@@ -67,15 +60,15 @@ export const getDashboardCharts = async (
 export const getDashboardTopCategories = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = dashboardTopCategoriesSchema.parse({ query: req.query });
+        const parsedQuery = dashboardTopCategoriesQuerySchema.parse(req.query);
 
         const topCategories = await getDashboardTopCategoriesService(
             userId,
-            parsed
+            parsedQuery,
         );
 
         res.status(200).json({
@@ -92,17 +85,15 @@ export const getDashboardTopCategories = async (
 export const getDashboardRecentActivity = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = dashboardRecentActivitySchema.parse({
-            query: req.query,
-        });
+        const parsedQuery = dashboardRecentActivityQuerySchema.parse(req.query);
 
         const recentActivity = await getDashboardRecentActivityService(
             userId,
-            parsed
+            parsedQuery,
         );
 
         res.status(200).json({
