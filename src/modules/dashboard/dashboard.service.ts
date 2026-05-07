@@ -37,31 +37,39 @@ export const getDashboardSummaryService = async (
     // Use the dynamic where builder function to construct the where clause for transactions based on userId and optional date range filters.
     const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
-    // Run three queries in parallel: one for total income, one for total expense, and one for transaction count
+    // Run four queries in parallel: one for total income, one for total expense, transaction count, and wallet balance
     // We use Promise.all() here to improve performance because all queries are independent and can safely run in parallel.
     // If we awaited them sequentially, it would take longer (sum of both query times instead of the max of both).
-    const [income, expense, count] = await Promise.all([
+    const [income, expense, count, walletBalance] = await Promise.all([
         prisma.transaction.aggregate({
             _sum: { amount: true },
             where: { ...where, kind: "income" },
         }),
+
         prisma.transaction.aggregate({
             _sum: { amount: true },
             where: { ...where, kind: "expense" },
         }),
+
         prisma.transaction.count({
             where,
+        }),
+        // This supports multiple wallets later, even if TrackBud currently uses one default wallet.
+        prisma.wallet.aggregate({
+            _sum: { balance: true },
+            where: { userId },
         }),
     ]);
 
     // Converts Decimal to Number and handles null case
     const totalIncome = Number(income._sum.amount ?? 0);
     const totalExpense = Number(expense._sum.amount ?? 0);
+    const currentBalance = Number(walletBalance._sum.balance ?? 0);
 
     return {
         totalIncome,
         totalExpense,
-        balance: totalIncome - totalExpense,
+        balance: currentBalance,
         transactionCount: count,
     };
 };
