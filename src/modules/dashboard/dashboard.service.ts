@@ -84,7 +84,7 @@ export const getDashboardChartsService = async (
     const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
     // GROUP BY CATEGORY
-    // Returns total amount per category within the date range. Example:
+    // Returns total expense amount per category within the date range. Example:
     // [
     //   { categoryId: 1, _sum: { amount: 1200 } },
     //   { categoryId: 2, _sum: { amount: 2500 } }
@@ -92,7 +92,15 @@ export const getDashboardChartsService = async (
     const byCategory = await prisma.transaction.groupBy({
         by: ["categoryId"],
         _sum: { amount: true },
-        where,
+        where: {
+            ...where,
+            kind: "expense", // For charts, we only care about expenses by category.
+        },
+        orderBy: {
+            _sum: {
+                amount: "desc",
+            },
+        },
     });
 
     // Extract only the category IDs from the grouped by category (ID) results
@@ -132,9 +140,9 @@ export const getDashboardChartsService = async (
         { month: string; income: Prisma.Decimal; expense: Prisma.Decimal }[]
     >`
     SELECT
-      to_char("occurredAt", 'YYYY-MM') AS month,
-      SUM(CASE WHEN kind = 'income' THEN amount ELSE 0 END) AS income,
-      SUM(CASE WHEN kind = 'expense' THEN amount ELSE 0 END) AS expense
+        to_char("occurredAt", 'YYYY-MM') AS month,
+        SUM(CASE WHEN kind = 'income' THEN amount ELSE 0 END) AS income,
+        SUM(CASE WHEN kind = 'expense' THEN amount ELSE 0 END) AS expense
     FROM "Transaction"
     WHERE "userId" = ${userId}
     ${startDate ? Prisma.sql`AND "occurredAt" >= ${startDate}` : Prisma.empty}
@@ -170,8 +178,11 @@ export const getDashboardTopCategoriesService = async (
 
     const topCategories = await prisma.transaction.groupBy({
         by: ["categoryId"],
+        where: {
+            ...where,
+            kind: "expense",
+        },
         _sum: { amount: true },
-        where,
         orderBy: {
             _sum: {
                 amount: "desc",
@@ -212,7 +223,7 @@ export const getDashboardRecentActivityService = async (
             category: { select: { name: true } },
             wallet: { select: { name: true } },
         },
-        orderBy: { occurredAt: "desc" },
+        orderBy: [{ occurredAt: "desc" }, { id: "desc" }],
         take: limit ?? 5,
     });
 
