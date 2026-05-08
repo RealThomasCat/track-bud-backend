@@ -15,7 +15,7 @@ export const dashboardChartsQuerySchema = dateRangeQuerySchema;
 
 // Top Categories schema supports partial date range filtering and small capped limit
 export const dashboardTopCategoriesQuerySchema = rawDateRangeQuerySchema
-    .extend({
+    .safeExtend({
         limit: dashboardLimitSchema,
     })
     .transform((data) => ({

@@ -36,7 +36,7 @@ export const getTransactionByIdSchema = z.object({
 // Validates query params for GET /transactions.
 // limit is capped so clients cannot request unlimited rows.
 export const getTransactionsQuerySchema = rawDateRangeQuerySchema
-    .extend({
+    .safeExtend({
         limit: paginationLimitSchema,
         // Cursor is the last transaction id from the previous page.
         cursor: idSchema.optional(),
