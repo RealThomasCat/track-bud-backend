@@ -10,21 +10,28 @@ import {
     aiSavingRecommendationsSchema,
     aiForecastResponseSchema,
 } from "./ai.output";
+import { AppError } from "../../utils/AppError";
+
+// TODO: Add db operations failure checks and throw AppError with proper messages and status codes.
+
+// Utility to get default start date based on a number of days before today if client doesn't provide a startDate.
+// This ensures we always have a valid limited date range for our queries.
+const getDefaultStartDate = (days: number): Date => {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() - days);
+    return date;
+};
 
 // Utility: builds date filter dynamically.
-// endDate is already transformed into the exclusive next-day boundary.
-function buildDateFilter(data: AIDashboardQueryInput) {
-    const { startDate, endDate } = data;
+function buildDateFilter(data: AIDashboardQueryInput, defaultDays: number) {
+    const endDate = data.endDate ?? new Date();
+    const startDate = data.startDate ?? getDefaultStartDate(defaultDays);
 
     return {
-        ...(startDate || endDate
-            ? {
-                  occurredAt: {
-                      ...(startDate ? { gte: startDate } : {}),
-                      ...(endDate ? { lt: endDate } : {}),
-                  },
-              }
-            : {}),
+        occurredAt: {
+            gte: startDate,
+            lt: endDate,
+        },
     };
 }
 
@@ -36,7 +43,7 @@ export const getSpendingSummaryService = async (
     const where = {
         userId,
         kind: TransactionKind.expense,
-        ...buildDateFilter(data),
+        ...buildDateFilter(data, 30), // Default to last 30 days if no date range provided
     };
 
     // Group by category to get spending per category
@@ -80,13 +87,13 @@ export const getSpendingSummaryService = async (
 
     // Compose prompt for Gemini API
     const prompt = `
-You are a personal finance assistant.
+        You are a personal finance assistant.
         Summarize this user's spending in 3 to 5 short insights for dashboard display.
 
         Use only the provided data. Do not invent categories or amounts.
 
-Data:
-${JSON.stringify(formattedData)}
+        Data:
+        ${JSON.stringify(formattedData)}
 `;
 
     return generateStructuredWithGemini({
@@ -106,7 +113,7 @@ export const getSavingRecommendationsService = async (
     const where = {
         userId,
         kind: TransactionKind.expense,
-        ...buildDateFilter(data),
+        ...buildDateFilter(data, 90), // Default to last 90 days if no date range provided
     };
 
     const spendingData = await prisma.transaction.groupBy({
@@ -145,13 +152,13 @@ export const getSavingRecommendationsService = async (
     }));
 
     const prompt = `
-You are a financial advisor.
+        You are a financial advisor.
         Suggest 3 practical saving tips based on this user's spending data.
 
         Use only the provided data. Do not invent categories or amounts.
 
-Data:
-${JSON.stringify(formattedData)}
+        Data:
+        ${JSON.stringify(formattedData)}
 `;
 
     return generateStructuredWithGemini({
@@ -185,7 +192,7 @@ export const getForecastService = async (
     >`
         SELECT
             TO_CHAR(DATE_TRUNC('month', "occurredAt"), 'YYYY-MM') AS month,
-               SUM(amount)::numeric AS total
+            SUM(amount)::numeric AS total
         FROM "Transaction"
         WHERE
             "userId" = ${userId}
@@ -210,12 +217,12 @@ export const getForecastService = async (
     }));
 
     const prompt = `
-You are an AI financial forecaster.
+        You are an AI financial forecaster.
         Predict next month's expense trend based on this monthly expense history.
 
         Use only the provided data. Do not invent missing months or amounts.
 
-Data:
+        Data:
         ${JSON.stringify(formattedTrendData)}
 `;
 
