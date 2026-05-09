@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { aiDashboardSchema } from "./ai.validation";
+import { aiDashboardQuerySchema } from "./ai.validation";
 import {
     getSpendingSummaryService,
     getSavingRecommendationsService,
@@ -11,18 +11,18 @@ import safeJsonParse from "../../utils/safeJsonParse";
 export const getSpendingSummary = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = aiDashboardSchema.parse({ query: req.query }); // validates query params safely
+        const parsedQuery = aiDashboardQuerySchema.parse(req.query); // validates query params safely
 
-        const result = await getSpendingSummaryService(userId, parsed);
+        const result = await getSpendingSummaryService(userId, parsedQuery);
+
         res.status(200).json({
             success: true,
             type: "spending-summary",
-            rawText: result, // Gemini’s full Markdown output
-            data: safeJsonParse(result), // JSON parsed if valid
+            data: result,
             message: "AI spending summary generated successfully",
         });
     } catch (error) {
@@ -34,18 +34,21 @@ export const getSpendingSummary = async (
 export const getSavingRecommendations = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = aiDashboardSchema.parse({ query: req.query });
+        const parsedQuery = aiDashboardQuerySchema.parse(req.query);
 
-        const result = await getSavingRecommendationsService(userId, parsed);
+        const result = await getSavingRecommendationsService(
+            userId,
+            parsedQuery,
+        );
+
         res.status(200).json({
             success: true,
             type: "saving-recommendations",
-            rawText: result,
-            data: safeJsonParse(result),
+            data: result,
             message: "AI saving recommendations generated successfully",
         });
     } catch (error) {
@@ -57,18 +60,18 @@ export const getSavingRecommendations = async (
 export const getForecast = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
 ) => {
     try {
         const userId = req.user?.id!;
-        const parsed = aiDashboardSchema.parse({ query: req.query });
+        const parsedQuery = aiDashboardQuerySchema.parse(req.query);
 
-        const result = await getForecastService(userId, parsed);
+        const result = await getForecastService(userId, parsedQuery);
+
         res.status(200).json({
             success: true,
             type: "forecast",
-            rawText: result,
-            data: safeJsonParse(result),
+            data: result,
             message: "AI forecast generated successfully",
         });
     } catch (error) {
