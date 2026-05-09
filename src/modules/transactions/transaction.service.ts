@@ -7,6 +7,22 @@ import {
 } from "./transaction.validation";
 import { AppError } from "../../utils/AppError";
 
+// Helper function to determine if a string is in YYYY-MM-DD format (date-only).
+const isDateOnly = (value: string): boolean => {
+    return /^\d{4}-\d{2}-\d{2}$/.test(value);
+};
+
+// Helper function to convert date-only string to UTC midnight Date object.
+const toTransactionDate = (occurredAt: string): Date => {
+    // If user only provided a date, store that financial date at UTC midnight.
+    if (isDateOnly(occurredAt)) {
+        return new Date(`${occurredAt}T00:00:00.000Z`);
+    }
+
+    // If user provided full datetime, preserve the provided timestamp.
+    return new Date(occurredAt);
+};
+
 // --- GET TRANSACTIONS ---
 export const getTransactionsService = async (
     userId: number,
@@ -113,9 +129,8 @@ export const createTransactionService = async (
     // Extract the relevant fields from the input data
     const { amount, categoryId, kind, note, occurredAt } = data;
 
-    // Use the validated timestamp from the request.
-    // Do not reset time to midnight because occurredAt should preserve when the transaction happened.
-    const transactionDate = new Date(occurredAt);
+    // Convert occurredAt to a Date object, handling both date-only and datetime inputs.
+    const transactionDate = toTransactionDate(occurredAt);
 
     // Start a prisma transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {

@@ -8,6 +8,16 @@ import {
     toUtcDayStart,
 } from "../../utils/validation";
 
+const occurredAtSchema = z.union([
+    z.iso.date({
+        message: "occurredAt must be a valid ISO date",
+    }),
+    z.iso.datetime({
+        offset: true,
+        message: "occurredAt must be a valid ISO datetime",
+    }),
+]);
+
 export const createTransactionSchema = z.object({
     amount: moneySchema,
     categoryId: idSchema,
@@ -19,10 +29,11 @@ export const createTransactionSchema = z.object({
         .trim()
         .max(200, "Note must be less than 200 characters")
         .optional(),
-    // Store exact timestamp for the transaction.
-    occurredAt: z.iso.datetime({
-        message: "occurredAt must be a valid ISO datetime",
-    }),
+
+    // Accept either:
+    // - YYYY-MM-DD
+    // - ISO datetime with timezone, e.g. 2026-04-05T18:30:00.000Z
+    occurredAt: occurredAtSchema,
 });
 
 export const deleteTransactionSchema = z.object({
