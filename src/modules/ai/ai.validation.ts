@@ -1,13 +1,7 @@
 import { z } from "zod";
+import { dateRangeQuerySchema } from "../../utils/validation";
 
 // Common schema for AI dashboard endpoints — supports optional date range filters
-export const aiDashboardSchema = z.object({
-    query: z
-        .object({
-            startDate: z.string().optional(),
-            endDate: z.string().optional(),
-        })
-        .optional(),
-});
+export const aiDashboardQuerySchema = dateRangeQuerySchema;
 
-export type AIDashboardInput = z.infer<typeof aiDashboardSchema>;
+export type AIDashboardQueryInput = z.infer<typeof aiDashboardQuerySchema>;
