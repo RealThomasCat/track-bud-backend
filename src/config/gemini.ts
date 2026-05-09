@@ -1,4 +1,10 @@
-import {env} from "./env";
+import { env } from "./env";
+import { z } from "zod";
+
+// Type-only import for CommonJS with explicit resolution-mode
+import type { GenerateContentConfig } from "@google/genai" with {
+    "resolution-mode": "import",
+};
 
 // Dynamically loads the GoogleGenAI SDK.
 // google/genai currently only supports ESM, which can cause import issues in CommonJS projects.
@@ -12,42 +18,64 @@ async function getGeminiClient() {
     });
 }
 
-// Type-only import for CommonJS with explicit resolution-mode
-import type { GenerateContentConfig } from "@google/genai" with { "resolution-mode": "import" };
+// Create an object type named GenerateStructuredOptions. It depends on one type variable called TSchema. TSchema must be a Zod schema.
+// TSchema means whatever schema type the caller passes, <TSchema extends z.ZodTypeAny> means "TSchema can be any type, BUT it must be a Zod schema type."
+type GenerateStructuredOptions<TSchema extends z.ZodTypeAny> = {
+    prompt: string;
+    schema: TSchema; // The schema property must be exactly the same schema type that was passed in.
+    responseSchema: GenerateContentConfig["responseSchema"]; // Use whatever type @google/genai expects for config.responseSchema.
+    systemInstruction?: string;
+};
 
-// Generates a concise AI response using Gemini 2.5 Flash
-export async function generateWithGemini(
-    prompt: string,
-    systemInstruction?: string
-): Promise<string> {
+// Generates validated structured JSON from Gemini.
+export async function generateStructuredWithGemini<
+    TSchema extends z.ZodTypeAny,
+>({
+    prompt,
+    schema,
+    responseSchema,
+    systemInstruction,
+}: GenerateStructuredOptions<TSchema>): Promise<z.infer<TSchema>> {
+    // This async function returns a Promise. When awaited, the value has the TypeScript type inferred from the Zod schema.
     try {
         const ai = await getGeminiClient();
 
-        // Define config with strict typing
+        // Define config for structured response generation.
         const config: GenerateContentConfig = {
-            maxOutputTokens: 250, // limit tokens for free plan
-            temperature: 0.7,
+            maxOutputTokens: 500,
+            temperature: 0.2,
             topP: 0.8,
-            thinkingConfig: { thinkingBudget: 0 }, // disable reasoning
+            thinkingConfig: { thinkingBudget: 0 },
+            responseMimeType: "application/json", // Ask Gemini to return JSON only
+            responseSchema, // Use a response schema so the model generates predictable JSON
         };
 
-        // Properly format system instruction as ContentUnion
+        // If a system instruction is provided, include it in the config.
         if (systemInstruction) {
-            (config as any).systemInstruction = {
+            config.systemInstruction = {
                 role: "system",
                 parts: [{ text: systemInstruction }],
             };
         }
 
+        // Call Gemini API to generate content based on the prompt and config.
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             config,
         });
 
-        return response.text?.trim() || "No response generated.";
+        // Extract and validate the response text.
+        const rawText = response.text?.trim();
+
+        if (!rawText) {
+            throw new Error("Gemini returned an empty response");
+        }
+
+        // Parse the raw text as JSON and validate it against the provided Zod schema.
+        return schema.parse(JSON.parse(rawText));
     } catch (error: any) {
         console.error("Gemini API Error:", error.message);
-        throw new Error("Failed to communicate with Gemini API");
+        throw new Error("Failed to generate valid AI response");
     }
 }
