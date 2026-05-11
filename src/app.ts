@@ -19,9 +19,9 @@ app.use(
         crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
         crossOriginResourcePolicy: { policy: "cross-origin" },
         crossOriginEmbedderPolicy: false,
-    })
+    }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(morgan("dev"));
 app.use(cookieParser());
 
@@ -32,7 +32,7 @@ app.use(
         credentials: true,
         methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allowedHeaders: ["Content-Type", "Authorization"],
-    })
+    }),
 );
 
 // DB TEST ROUTE (Restricted DB test to development only)
@@ -44,11 +44,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Routes
-app.use("/", routes);
+app.use("/api/v1", routes);
 
 // Health Check
-app.get("/", (_req: Request, res: Response) => {
-    res.send("Expense Tracker API running...");
+app.get("/health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
 });
 
 // 404 Handler
