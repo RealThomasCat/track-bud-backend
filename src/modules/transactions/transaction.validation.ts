@@ -8,15 +8,20 @@ import {
     toUtcDayStart,
 } from "../../utils/validation";
 
-const occurredAtSchema = z.union([
-    z.iso.date({
-        message: "occurredAt must be a valid ISO date",
-    }),
-    z.iso.datetime({
-        offset: true,
-        message: "occurredAt must be a valid ISO datetime",
-    }),
-]);
+// OccurredAt can be either a date-only string (YYYY-MM-DD) or a full ISO datetime string.
+const occurredAtSchema = z.string().refine(
+    (value) => {
+        const dateOnly = z.iso.date().safeParse(value).success;
+        const dateTime = z.iso
+            .datetime({ offset: true })
+            .safeParse(value).success;
+
+        return dateOnly || dateTime;
+    },
+    {
+        message: "occurredAt must be either YYYY-MM-DD or a valid ISO datetime",
+    },
+);
 
 export const createTransactionSchema = z.object({
     amount: moneySchema,
