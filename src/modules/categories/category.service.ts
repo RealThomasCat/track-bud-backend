@@ -39,10 +39,30 @@ export const createCategoryService = async (
         return category;
     } catch (error: any) {
         // Handle unique constraint violation (e.g., duplicate category name)
-        if (error.code === "P2002") {
-            throw new AppError("Category name already exists", 400);
+        if (error.code !== "P2002") {
+            throw error;
         }
-        throw error;
+
+        // Check if the existing category with the same name is archived
+        const existingCategory = await prisma.category.findFirst({
+            where: {
+                userId,
+                name: data.name,
+            },
+            select: {
+                isArchived: true,
+            },
+        });
+
+        // If an archived category with the same name exists, throw a specific error message
+        if (existingCategory?.isArchived) {
+            throw new AppError(
+                "A category with this name already exists but is archived. Restore it instead of creating a duplicate.",
+                409,
+            );
+        }
+
+        throw new AppError("Category name already exists", 409);
     }
 };
 
