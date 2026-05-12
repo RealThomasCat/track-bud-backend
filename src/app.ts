@@ -9,8 +9,16 @@ import routes from "./routes";
 import { errorHandler } from "./middleware/errorHandler";
 import { env } from "./config/env";
 import { prisma } from "./config/db";
+import { globalApiLimiter } from "./middleware/rateLimitMiddleware";
 
 const app = express();
+
+// Trust the first reverse proxy in production.
+// Needed when the app is deployed behind Render/Nginx/Cloudflare/etc.
+// This helps Express read the real client IP from X-Forwarded-For, which is important for IP-based rate limiting.
+if (env.nodeEnv === "production") {
+    app.set("trust proxy", 1);
+}
 
 // Core Middlewares
 app.use(
@@ -44,7 +52,8 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 // Routes
-app.use("/api/v1", routes);
+// Apply global API rate limiter to all /api/v1 routes. This should be the first middleware for API routes to catch abusive traffic early.
+app.use("/api/v1", globalApiLimiter, routes);
 
 // Health Check
 app.get("/health", (_req, res) => {
