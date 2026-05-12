@@ -5,14 +5,15 @@ import {
     deleteCategory,
     getCategories,
 } from "./category.controller";
+import { writeLimiter } from "../../middleware/rateLimitMiddleware";
 
 const router = Router();
 
-// Apply authentication middleware to all routes in this router
 router.use(authenticate);
 
 router.get("/", getCategories);
-router.post("/", createCategory);
-router.delete("/:id", deleteCategory);
+
+router.post("/", writeLimiter, createCategory);
+router.delete("/:id", writeLimiter, deleteCategory);
 
 export default router;

@@ -6,11 +6,12 @@ import {
     getDashboardTopCategories,
     getDashboardRecentActivity,
 } from "./dashboard.controller";
+import { dashboardLimiter } from "../../middleware/rateLimitMiddleware";
 
 const router = Router();
 
-// Apply authentication middleware to all routes in this router
 router.use(authenticate);
+router.use(dashboardLimiter);
 
 router.get("/summary", getDashboardSummary);
 router.get("/charts", getDashboardCharts);

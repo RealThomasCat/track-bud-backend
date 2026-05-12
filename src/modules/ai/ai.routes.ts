@@ -5,23 +5,15 @@ import {
     getSpendingSummary,
 } from "./ai.controller";
 import { authenticate } from "../../middleware/authMiddleware";
+import { aiLimiter } from "../../middleware/rateLimitMiddleware";
 
 const router = express.Router();
 
-// Protect all routes under /dashboard/ai
 router.use(authenticate);
 
-//  GET /ai/test - Verifies Gemini API integration.
-// router.get("/test", async (_, res) => {
-//     try {
-//         const output = await generateWithGemini(
-//             "Write a one-line savings tip."
-//         );
-//         res.json({ success: true, output });
-//     } catch (error: any) {
-//         res.status(500).json({ success: false, error: error.message });
-//     }
-// });
+// Apply rate limiter to all AI routes.
+// Applying the limiter at the router level means that all routes defined in this file will share the same rate limit quota.
+router.use(aiLimiter);
 
 router.get("/spending-summary", getSpendingSummary);
 router.get("/saving-recommendations", getSavingRecommendations);
