@@ -1,3 +1,5 @@
+// This file defines the main Express application setup.
+
 import type { Request, Response, NextFunction } from "express";
 import express from "express";
 import cors from "cors";
