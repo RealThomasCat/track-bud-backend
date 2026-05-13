@@ -12,6 +12,8 @@ export const env = {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
     geminiApiKey: process.env.GEMINI_API_KEY || "",
     frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
+    redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+    cacheEnabled: process.env.CACHE_ENABLED === "true" || false,
 };
 
 if (!env.geminiApiKey) {
