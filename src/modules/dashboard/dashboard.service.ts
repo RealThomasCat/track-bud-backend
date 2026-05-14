@@ -6,6 +6,14 @@ import {
     DashboardSummaryInput,
     DashboardTopCategoriesInput,
 } from "./dashboard.validation";
+import {
+    DASHBOARD_CHARTS_TTL_SECONDS,
+    DASHBOARD_SUMMARY_TTL_SECONDS,
+    getDashboardChartsCacheKey,
+    getDashboardSummaryCacheKey,
+} from "./dashboard.cache";
+import { getCache, setCache } from "../../utils/cache";
+
 
 // Helper function to dynamically build the where clause for transaction queries based on userId and optional date range filters.
 const buildDashboardTransactionWhere = (
@@ -34,6 +42,22 @@ export const getDashboardSummaryService = async (
     // Extract date range from query parameters
     const { startDate, endDate } = data;
 
+    // Build redis cache key
+    const cacheKey = getDashboardSummaryCacheKey(userId, startDate, endDate);
+
+    // Search in cache first
+    const cachedSummary = await getCache<{
+        totalIncome: number;
+        totalExpense: number;
+        balance: number;
+        transactionCount: number;
+    }>(cacheKey);
+
+    // If cache hit then return otherwise query DB
+    if (cachedSummary) {
+        return cachedSummary;
+    }
+
     // Use the dynamic where builder function to construct the where clause for transactions based on userId and optional date range filters.
     const where = buildDashboardTransactionWhere(userId, startDate, endDate);
 
@@ -61,17 +85,18 @@ export const getDashboardSummaryService = async (
         }),
     ]);
 
-    // Converts Decimal to Number and handles null case
-    const totalIncome = Number(income._sum.amount ?? 0);
-    const totalExpense = Number(expense._sum.amount ?? 0);
-    const currentBalance = Number(walletBalance._sum.balance ?? 0);
-
-    return {
-        totalIncome,
-        totalExpense,
-        balance: currentBalance,
+    // Convert Decimal to Number and handle null case
+    const summary = {
+        totalIncome: Number(income._sum.amount ?? 0),
+        totalExpense: Number(expense._sum.amount ?? 0),
+        balance: Number(walletBalance._sum.balance ?? 0),
         transactionCount: count,
     };
+
+    // Save fresh result to cache after DB query
+    await setCache(cacheKey, summary, DASHBOARD_SUMMARY_TTL_SECONDS);
+
+    return summary;
 };
 
 // --- GET CHARTS ---
@@ -82,6 +107,19 @@ export const getDashboardChartsService = async (
     const { startDate, endDate } = data;
 
     const where = buildDashboardTransactionWhere(userId, startDate, endDate);
+
+    // Build Redis cache key for this user and date range.
+    const cacheKey = getDashboardChartsCacheKey(userId, startDate, endDate);
+
+    // Search Redis first.
+    const cachedCharts = await getCache<{
+        byCategory: { category: string; total: number }[];
+        byMonth: { month: string; income: number; expense: number }[];
+    }>(cacheKey);
+
+    if (cachedCharts) {
+        return cachedCharts;
+    }
 
     // GROUP BY CATEGORY
     // Returns total expense amount per category within the date range. Example:
@@ -161,10 +199,16 @@ export const getDashboardChartsService = async (
         expense: Number(item.expense),
     }));
 
-    return {
+    const charts = {
         byCategory: byCategoryData,
         byMonth: byMonthData,
     };
+
+    // Save final frontend-friendly chart response to Redis.
+    // Do not cache Prisma Decimal objects directly.
+    await setCache(cacheKey, charts, DASHBOARD_CHARTS_TTL_SECONDS);
+
+    return charts;
 };
 
 // --- GET TOP CATEGORIES (BY EXPENSE) ---
