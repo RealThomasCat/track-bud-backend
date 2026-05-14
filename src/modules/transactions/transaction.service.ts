@@ -6,6 +6,9 @@ import {
     GetTransactionsQueryInput,
 } from "./transaction.validation";
 import { AppError } from "../../utils/AppError";
+import { deleteCacheByPattern } from "../../utils/cache";
+import { getDashboardUserCachePattern } from "../dashboard/dashboard.cache";
+
 
 // Helper function to determine if a string is in YYYY-MM-DD format (date-only).
 const isDateOnly = (value: string): boolean => {
@@ -177,6 +180,10 @@ export const createTransactionService = async (
             },
         });
 
+        // Invalidate dashboard cache only after the DB transaction succeeds.
+        // This prevents stale dashboard summary/charts after a new transaction.
+        await deleteCacheByPattern(getDashboardUserCachePattern(userId));
+
         return transaction;
     });
 
@@ -214,6 +221,9 @@ export const deleteTransactionService = async (
             },
         });
     });
+
+    // Invalidate dashboard cache only after deletion and wallet reversal succeed.
+    await deleteCacheByPattern(getDashboardUserCachePattern(userId));
 
     return { message: "Transaction deleted successfully" };
 };
