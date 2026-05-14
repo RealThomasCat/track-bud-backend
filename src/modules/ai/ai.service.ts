@@ -9,8 +9,20 @@ import {
     aiSavingRecommendationsResponseSchema,
     aiSavingRecommendationsSchema,
     aiForecastResponseSchema,
+    AIInsightOutput,
+    AISavingRecommendationsOutput,
+    AIForecastOutput,
 } from "./ai.output";
 import { AppError } from "../../utils/AppError";
+import {
+    AI_FORECAST_TTL_SECONDS,
+    AI_SAVING_RECOMMENDATIONS_TTL_SECONDS,
+    AI_SPENDING_SUMMARY_TTL_SECONDS,
+    getAIForecastCacheKey,
+    getAISavingRecommendationsCacheKey,
+    getAISpendingSummaryCacheKey,
+} from "./ai.cache";
+import { getCache, setCache } from "../../utils/cache";
 
 // TODO: Add db operations failure checks and throw AppError with proper messages and status codes.
 
@@ -40,6 +52,20 @@ export const getSpendingSummaryService = async (
     userId: number,
     data: AIDashboardQueryInput,
 ) => {
+    // Build cache key
+    const cacheKey = getAISpendingSummaryCacheKey(
+        userId,
+        data.startDate,
+        data.endDate,
+    );
+
+    // First find summary in cache
+    const cached = await getCache<AIInsightOutput>(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
     const where = {
         userId,
         kind: TransactionKind.expense,
@@ -53,12 +79,16 @@ export const getSpendingSummaryService = async (
         where,
     });
 
-    // If no spending data, return early with a default message and empty insights.
+    // If no spending data, set cache and return early with a default message and empty insights.
     if (spendingData.length === 0) {
-        return {
+        const result = {
             summary: "No expenses recorded for this period.",
             insights: [],
         };
+
+        await setCache(cacheKey, result, AI_SPENDING_SUMMARY_TTL_SECONDS);
+
+        return result;
     }
 
     // Fetch category names for better AI insights
@@ -96,13 +126,19 @@ export const getSpendingSummaryService = async (
         ${JSON.stringify(formattedData)}
 `;
 
-    return generateStructuredWithGemini({
+    // Generate gemini result
+    const result = await generateStructuredWithGemini({
         prompt,
         schema: aiInsightSchema,
         responseSchema: aiInsightResponseSchema,
         systemInstruction:
             "Return concise personal finance insights as structured JSON only.",
     });
+
+    // Save fresh AI result to cache after Gemini generation
+    await setCache(cacheKey, result, AI_SPENDING_SUMMARY_TTL_SECONDS);
+
+    return result;
 };
 
 // --- SAVING RECOMMENDATIONS ---
@@ -110,6 +146,18 @@ export const getSavingRecommendationsService = async (
     userId: number,
     data: AIDashboardQueryInput,
 ) => {
+    const cacheKey = getAISavingRecommendationsCacheKey(
+        userId,
+        data.startDate,
+        data.endDate,
+    );
+
+    const cached = await getCache<AISavingRecommendationsOutput>(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
     const where = {
         userId,
         kind: TransactionKind.expense,
@@ -123,10 +171,14 @@ export const getSavingRecommendationsService = async (
     });
 
     if (spendingData.length === 0) {
-        return {
+        const result = {
             summary: "No expenses recorded for this period.",
             tips: [],
         };
+
+        await setCache(cacheKey, result, AI_SAVING_RECOMMENDATIONS_TTL_SECONDS);
+
+        return result;
     }
 
     const categoryIds = spendingData.map((item) => item.categoryId);
@@ -161,13 +213,17 @@ export const getSavingRecommendationsService = async (
         ${JSON.stringify(formattedData)}
 `;
 
-    return generateStructuredWithGemini({
+    const result = await generateStructuredWithGemini({
         prompt,
         schema: aiSavingRecommendationsSchema,
         responseSchema: aiSavingRecommendationsResponseSchema,
         systemInstruction:
             "Return concise personal finance saving recommendations as structured JSON only.",
     });
+
+    await setCache(cacheKey, result, AI_SAVING_RECOMMENDATIONS_TTL_SECONDS);
+
+    return result;
 };
 
 // --- FORECAST ---
@@ -175,6 +231,18 @@ export const getForecastService = async (
     userId: number,
     data: AIDashboardQueryInput,
 ) => {
+    const cacheKey = getAIForecastCacheKey(
+        userId,
+        data.startDate,
+        data.endDate,
+    );
+
+    const cached = await getCache<AIForecastOutput>(cacheKey);
+
+    if (cached) {
+        return cached;
+    }
+
     // Default forecast window: last 6 months ending today.
     // If the client sends a date range, we respect that range instead.
     const toDate = data.endDate ?? new Date();
@@ -204,10 +272,14 @@ export const getForecastService = async (
     `;
 
     if (trendData.length === 0) {
-        return {
+        const result = {
             forecastText: "No expense data available to generate a forecast.",
             expectedChange: "N/A",
         };
+
+        await setCache(cacheKey, result, AI_FORECAST_TTL_SECONDS);
+
+        return result;
     }
 
     // Format data for AI prompt
@@ -226,11 +298,15 @@ export const getForecastService = async (
         ${JSON.stringify(formattedTrendData)}
 `;
 
-    return generateStructuredWithGemini({
+    const result = await generateStructuredWithGemini({
         prompt,
         schema: aiForecastSchema,
         responseSchema: aiForecastResponseSchema,
         systemInstruction:
             "Return a concise financial forecast as structured JSON only.",
     });
+
+    await setCache(cacheKey, result, AI_FORECAST_TTL_SECONDS);
+
+    return result;
 };
