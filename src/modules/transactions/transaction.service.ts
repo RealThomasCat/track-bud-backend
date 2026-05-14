@@ -8,6 +8,7 @@ import {
 import { AppError } from "../../utils/AppError";
 import { deleteCacheByPattern } from "../../utils/cache";
 import { getDashboardUserCachePattern } from "../dashboard/dashboard.cache";
+import { getAIUserCachePattern } from "../ai/ai.cache";
 
 
 // Helper function to determine if a string is in YYYY-MM-DD format (date-only).
@@ -180,12 +181,15 @@ export const createTransactionService = async (
             },
         });
 
-        // Invalidate dashboard cache only after the DB transaction succeeds.
-        // This prevents stale dashboard summary/charts after a new transaction.
-        await deleteCacheByPattern(getDashboardUserCachePattern(userId));
-
         return transaction;
     });
+
+    // Invalidate cache only after the DB transaction succeeds.
+    // This prevents stale cache data after a new transaction.
+    await Promise.all([
+        deleteCacheByPattern(getDashboardUserCachePattern(userId)),
+        deleteCacheByPattern(getAIUserCachePattern(userId)),
+    ]);
 
     return result;
 };
@@ -222,8 +226,11 @@ export const deleteTransactionService = async (
         });
     });
 
-    // Invalidate dashboard cache only after deletion and wallet reversal succeed.
-    await deleteCacheByPattern(getDashboardUserCachePattern(userId));
+    // Invalidate cache only after deletion and wallet reversal succeed.
+    await Promise.all([
+        deleteCacheByPattern(getDashboardUserCachePattern(userId)),
+        deleteCacheByPattern(getAIUserCachePattern(userId)),
+    ]);
 
     return { message: "Transaction deleted successfully" };
 };
