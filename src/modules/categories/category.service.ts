@@ -62,6 +62,7 @@ export const createCategoryService = async (
             );
         }
 
+        // Else throw generic error for this service
         throw new AppError("Category name already exists", 409);
     }
 };
