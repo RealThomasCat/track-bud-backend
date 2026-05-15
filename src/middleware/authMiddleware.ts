@@ -45,11 +45,13 @@ export const authenticate = (
 
         next();
     } catch (error) {
+        // If it is already a known auth error (from try block), send it to the global error handler as it is.
         if (error instanceof AppError) {
             next(error);
             return;
         }
 
+        // Else Generic unauthorized error
         next(new AppError("Unauthorized: Invalid or expired token", 401));
     }
 };
