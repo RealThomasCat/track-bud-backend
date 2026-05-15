@@ -47,11 +47,11 @@ export const loginLimiter = rateLimit({
     limit: 5,
     standardHeaders: "draft-8",
     legacyHeaders: false,
-    skipSuccessfulRequests: true, // Only limit failed attemps.
+    skipSuccessfulRequests: true, // Only limit failed attempts.
     handler: rateLimitHandler,
 });
 
-// We splited auth limiter into two separate limiters (login and register) to allow more flexibility.
+// We split auth limiter into two separate limiters (login and register) to allow more flexibility.
 // Main difference is the skipSuccessfulRequests option.
 // For login, we want to only limit failed attempts to prevent brute-force attacks while allowing normal users to log in without hitting limits.
 // For register, we want to enforce the limit strictly because successful registrations can also be abused (e.g. creating many fake accounts).
