@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { GenerateContentConfig } from "@google/genai" with {
     "resolution-mode": "import",
 };
+import { AppError } from "../utils/AppError";
 
 // Dynamically loads the GoogleGenAI SDK.
 // google/genai currently only supports ESM, which can cause import issues in CommonJS projects.
@@ -69,13 +70,21 @@ export async function generateStructuredWithGemini<
         const rawText = response.text?.trim();
 
         if (!rawText) {
-            throw new Error("Gemini returned an empty response");
+            throw new AppError("Failed to generate valid AI response", 502);
         }
 
         // Parse the raw text as JSON and validate it against the provided Zod schema.
         return schema.parse(JSON.parse(rawText));
     } catch (error: any) {
-        console.error("Gemini API Error:", error.message);
-        throw new Error("Failed to generate valid AI response");
+        // If something failed inside generateStructuredWithGemini. Log it.
+        console.error("Gemini API Error:", error);
+
+        // If it is already an AppError, preserve it (don't overwrite it with generic AppError)
+        if (error instanceof AppError) {
+            throw error;
+        }
+
+        // If it is not an AppError, convert it into a safe 502 AppError. (Generic AppError)
+        throw new AppError("Failed to generate valid AI response", 502);
     }
 }
