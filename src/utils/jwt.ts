@@ -1,12 +1,21 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 
-const JWT_SECRET = env.jwtSecret!;
-const JWT_EXPIRES_IN = "1h";
+// Define the shape of our JWT payload for better type safety
+export type AuthTokenPayload = {
+    id: number;
+};
 
-// Sign JWT containing only userId
-export const signToken = (userId: number) => {
-    return jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+const JWT_SECRET = env.jwtSecret;
+const JWT_EXPIRES_IN = env.jwtExpiresIn;
+
+// Sign JWT containing only userId. Keep the payload minimal so the token does not expose unnecessary user data.
+export const signToken = (userId: number): string => {
+    const payload: AuthTokenPayload = { id: userId };
+
+    return jwt.sign(payload, JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
+    });
 };
 
 const sameSiteValue: "none" | "lax" | "strict" =
@@ -20,6 +29,10 @@ export const COOKIE_OPTIONS = {
     secure: env.nodeEnv === "production", // send only over HTTPS in production
     sameSite: sameSiteValue,
     path: "/", // cookie sent with every request
-    maxAge: 60 * 60 * 1000, // 1 hour (matches token expiry)
+    maxAge: env.jwtCookieMaxAgeMs,
     partitioned: partitionedValue, // for cross-site contexts
 };
+
+// NOTE: Because have only access token mechanism we don't have to make cookie live longer than token
+// Because doing that would introduce noisy "Invalid token" error
+// We can increase cookie maxAge in future when we implement refresh tokens.

@@ -2,15 +2,16 @@ import { env } from "../config/env";
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { AppError } from "../utils/AppError";
+import { AuthTokenPayload } from "../utils/jwt";
 
-// JWT payload type from jsonwebtoken, and also require an id field of type number.
-type AuthTokenPayload = JwtPayload & {
-    id: number;
-};
+// Define type of the payload jsonwebtoken returns after verification, which may also include JWT standard fields.
+type VerifiedAuthTokenPayload = JwtPayload & AuthTokenPayload;
 
 // Runtime type guard for the JWT payload. This verifies that the decoded runtime value has the shape we expect.
 // Narrowing typescript concept: If this function returns true, treat decoded as AuthTokenPayload after this point.
-const isAuthTokenPayload = (decoded: unknown): decoded is AuthTokenPayload => {
+const isAuthTokenPayload = (
+    decoded: unknown,
+): decoded is VerifiedAuthTokenPayload => {
     return (
         typeof decoded === "object" && // decoded must be a runtime object
         decoded !== null && // typeof null is also "object", so exclude null
