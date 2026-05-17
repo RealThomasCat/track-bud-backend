@@ -5,7 +5,6 @@ import {
     getSavingRecommendationsService,
     getForecastService,
 } from "./ai.service";
-import safeJsonParse from "../../utils/safeJsonParse";
 
 // --- GET SPENDING SUMMARY ---
 export const getSpendingSummary = async (
