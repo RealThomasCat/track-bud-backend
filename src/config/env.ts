@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import { z } from "zod";
 import type { StringValue } from "ms";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Validation schema
 const envSchema = z.object({
