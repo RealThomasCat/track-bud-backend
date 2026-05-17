@@ -68,7 +68,7 @@ export const deleteCache = async (key: string): Promise<void> => {
     }
 };
 
-// deleteCacheByPattern removes all keys that match a given pattern.
+// deleteCacheByPattern removes cache keys matching a Redis glob-style pattern.
 // Pattern can include wildcards, e.g. "dashboard:*:user:12:*" to match all dashboard cache keys for user 12.
 // Like "dashboard:summary:user:12:start:2026-05-01:end:2026-05-31" and "dashboard:charts:user:12:start:2026-05-01:end:2026-05-31"
 export const deleteCacheByPattern = async (pattern: string): Promise<void> => {
