@@ -1,4 +1,7 @@
 // Custom error class for consistent error handling across the app
+// - AppError -> request/response application errors
+// - Error -> internal infrastructure/library/programming errors
+
 export class AppError extends Error {
     public statusCode: number;
     public isOperational: boolean;
