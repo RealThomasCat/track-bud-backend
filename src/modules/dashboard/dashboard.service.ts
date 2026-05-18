@@ -14,7 +14,6 @@ import {
 } from "./dashboard.cache";
 import { getCache, setCache } from "../../utils/cache";
 
-
 // Helper function to dynamically build the where clause for transaction queries based on userId and optional date range filters.
 const buildDashboardTransactionWhere = (
     userId: number,
@@ -152,21 +151,20 @@ export const getDashboardChartsService = async (
         select: { id: true, name: true },
     });
 
+    // Create map (category name <-> category id)
+    const categoryNameById = new Map(
+        categories.map((category) => [category.id, category.name]),
+    );
+
     // Map category names and totals to produce readable data. Example:
     // [
     //   { "category": "Food", "total": 1200 },
     //   { "category": "Rent", "total": 2500 }
     // ]
-    const byCategoryData = byCategory.map((item) => {
-        // Find the category name for this categoryId
-        const category = categories.find((c) => c.id === item.categoryId);
-
-        // Return object with category name and total amount
-        return {
-            category: category?.name ?? "Unknown",
+    const byCategoryData = byCategory.map((item) => ({
+        category: categoryNameById.get(item.categoryId) ?? "Unknown",
             total: Number(item._sum.amount ?? 0),
-        };
-    });
+    }));
 
     // GROUP BY MONTH
     // Executes a raw SQL query (Postgres syntax) because Prisma groupBy can’t group by a computed field like YYYY-MM
