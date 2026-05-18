@@ -33,6 +33,10 @@ export const getTransactionsService = async (
     query: GetTransactionsQueryInput,
 ) => {
     const { limit, cursor, kind, startDate, endDate } = query;
+
+    // TODO: For stronger pagination correctness, replace id-only cursor with an opaque cursor containing both occurredAt and id.
+    // This protects pagination if the cursor row is deleted or its occurredAt changes between requests.
+
     // Validate cursor ownership before using it.
     // This prevents users from passing another user's transaction id as a cursor.
     if (cursor) {
@@ -140,11 +144,26 @@ export const createTransactionService = async (
     const result = await prisma.$transaction(async (tx) => {
         // Validate category ownership and non-archived
         const category = await tx.category.findFirst({
-            where: { id: categoryId, userId, isArchived: false },
+            where: {
+                id: categoryId,
+                userId,
+            },
+            select: {
+                id: true,
+                isArchived: true,
+            },
         });
 
         if (!category) {
-            throw new AppError("Invalid or archived category", 404);
+            throw new AppError("Category not found", 404);
+        }
+
+        // If category is archived, ask user to unarchive it before using.
+        if (category.isArchived) {
+            throw new AppError(
+                "This category is archived. Restore it before using it for a transaction.",
+                409,
+            );
         }
 
         // Fetch default wallet
@@ -184,12 +203,20 @@ export const createTransactionService = async (
         return transaction;
     });
 
-    // Invalidate cache only after the DB transaction succeeds.
-    // This prevents stale cache data after a new transaction.
+    // Invalidate cache only after the DB transaction succeeds. This prevents stale cache data after a new transaction.
+    // try-catch block because cache invalidation should not fail the successful DB operation.
+    try {
     await Promise.all([
         deleteCacheByPattern(getDashboardUserCachePattern(userId)),
         deleteCacheByPattern(getAIUserCachePattern(userId)),
     ]);
+    } catch (error) {
+        // Only log error on cache invalidation failure, don't throw.
+        console.error(
+            "Cache invalidation failed after transaction mutation:",
+            error,
+        );
+    }
 
     return result;
 };
@@ -227,10 +254,17 @@ export const deleteTransactionService = async (
     });
 
     // Invalidate cache only after deletion and wallet reversal succeed.
+    try {
     await Promise.all([
         deleteCacheByPattern(getDashboardUserCachePattern(userId)),
         deleteCacheByPattern(getAIUserCachePattern(userId)),
     ]);
+    } catch (error) {
+        console.error(
+            "Cache invalidation failed after transaction mutation:",
+            error,
+        );
+    }
 
     return { message: "Transaction deleted successfully" };
 };
