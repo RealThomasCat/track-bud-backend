@@ -57,7 +57,7 @@ export const setCache = async (
 
 // deleteCache removes a specific key from Redis.
 export const deleteCache = async (key: string): Promise<void> => {
-    if (!env.cacheEnabled || !redisClient.isReady) {
+    if (!env.cacheEnabled || !redisClient.isReady || !key) {
         return;
     }
 
@@ -79,11 +79,19 @@ export const deleteCacheByPattern = async (pattern: string): Promise<void> => {
     try {
         // scanIterator is safer than KEYS for production-like usage because it iterates in batches and doesn't block Redis.
         // KEYS can block Redis if there are many keys.
-        for await (const key of redisClient.scanIterator({
+        for await (const result of redisClient.scanIterator({
             MATCH: pattern,
             COUNT: 100, // Batch size for scanning.
         })) {
-            await redisClient.del(key);
+            // node-redis scanIterator can yield either a key or a batch of keys depending on usage/version.
+            // We normalize each result to an array so DEL is only called with real keys.
+            const keys = Array.isArray(result) ? result : [result];
+
+            if (keys.length === 0) {
+                continue;
+            }
+
+            await redisClient.del(keys);
         }
     } catch (error) {
         console.error("Redis deleteCacheByPattern error:", error);
