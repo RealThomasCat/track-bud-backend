@@ -163,7 +163,7 @@ export const getDashboardChartsService = async (
     // ]
     const byCategoryData = byCategory.map((item) => ({
         category: categoryNameById.get(item.categoryId) ?? "Unknown",
-            total: Number(item._sum.amount ?? 0),
+        total: Number(item._sum.amount ?? 0),
     }));
 
     // GROUP BY MONTH
