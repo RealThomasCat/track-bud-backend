@@ -66,9 +66,16 @@ export const getTransactionsQuerySchema = rawDateRangeQuerySchema
             : undefined,
     }));
 
+export const updateTransactionSchema = createTransactionSchema
+    .partial()
+    .refine((data) => Object.keys(data).length > 0, {
+        message: "At least one field is required to update transaction",
+    });
+
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type DeleteTransactionInput = z.infer<typeof deleteTransactionSchema>;
 export type GetTransactionByIdInput = z.infer<typeof getTransactionByIdSchema>;
 export type GetTransactionsQueryInput = z.infer<
     typeof getTransactionsQuerySchema
 >;
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;

@@ -4,12 +4,12 @@ import {
     CreateTransactionInput,
     DeleteTransactionInput,
     GetTransactionsQueryInput,
+    UpdateTransactionInput,
 } from "./transaction.validation";
 import { AppError } from "../../utils/AppError";
 import { deleteCacheByPattern } from "../../utils/cache";
 import { getDashboardUserCachePattern } from "../dashboard/dashboard.cache";
 import { getAIUserCachePattern } from "../ai/ai.cache";
-
 
 // Helper function to determine if a string is in YYYY-MM-DD format (date-only).
 const isDateOnly = (value: string): boolean => {
@@ -206,10 +206,10 @@ export const createTransactionService = async (
     // Invalidate cache only after the DB transaction succeeds. This prevents stale cache data after a new transaction.
     // try-catch block because cache invalidation should not fail the successful DB operation.
     try {
-    await Promise.all([
-        deleteCacheByPattern(getDashboardUserCachePattern(userId)),
-        deleteCacheByPattern(getAIUserCachePattern(userId)),
-    ]);
+        await Promise.all([
+            deleteCacheByPattern(getDashboardUserCachePattern(userId)),
+            deleteCacheByPattern(getAIUserCachePattern(userId)),
+        ]);
     } catch (error) {
         // Only log error on cache invalidation failure, don't throw.
         console.error(
@@ -255,10 +255,10 @@ export const deleteTransactionService = async (
 
     // Invalidate cache only after deletion and wallet reversal succeed.
     try {
-    await Promise.all([
-        deleteCacheByPattern(getDashboardUserCachePattern(userId)),
-        deleteCacheByPattern(getAIUserCachePattern(userId)),
-    ]);
+        await Promise.all([
+            deleteCacheByPattern(getDashboardUserCachePattern(userId)),
+            deleteCacheByPattern(getAIUserCachePattern(userId)),
+        ]);
     } catch (error) {
         console.error(
             "Cache invalidation failed after transaction mutation:",
@@ -267,4 +267,120 @@ export const deleteTransactionService = async (
     }
 
     return { message: "Transaction deleted successfully" };
+};
+
+// --- UPDATE TRANSACTION ---
+export const updateTransactionService = async (
+    userId: number,
+    id: number,
+    data: UpdateTransactionInput,
+) => {
+    const result = await prisma.$transaction(async (tx) => {
+        // Fetch existing transaction with ownership check.
+        const existingTransaction = await tx.transaction.findFirst({
+            where: {
+                id,
+                userId,
+            },
+        });
+
+        if (!existingTransaction) {
+            throw new AppError("Transaction not found", 404);
+        }
+
+        // Only validate category when the user is changing categoryId.
+        // PATCH clients should ideally send only changed fields, but this also handles clients that send the existing categoryId unchanged.
+        if (data.categoryId !== undefined) {
+            const category = await tx.category.findFirst({
+                where: {
+                    id: data.categoryId,
+                    userId,
+                },
+                select: {
+                    id: true,
+                    isArchived: true,
+                },
+            });
+
+            if (!category) {
+                throw new AppError("Category not found", 404);
+            }
+
+            if (category.isArchived) {
+                throw new AppError(
+                    "This category is archived. Restore it before using it for a transaction.",
+                    409,
+                );
+            }
+        }
+
+        // Updated transaction data
+        const updatedKind = data.kind ?? existingTransaction.kind;
+        const updatedAmount = data.amount ?? existingTransaction.amount;
+        const updatedCategoryId =
+            data.categoryId ?? existingTransaction.categoryId;
+        const updatedNote =
+            data.note === undefined ? existingTransaction.note : data.note;
+        const updatedOccurredAt =
+            data.occurredAt === undefined
+                ? existingTransaction.occurredAt
+                : toTransactionDate(data.occurredAt);
+
+        // Reverse old wallet impact first.
+        await tx.wallet.update({
+            where: {
+                id: existingTransaction.walletId,
+            },
+            data: {
+                balance:
+                    existingTransaction.kind === "income"
+                        ? { decrement: existingTransaction.amount }
+                        : { increment: existingTransaction.amount },
+            },
+        });
+
+        // Update transaction after reversing old impact.
+        const updatedTransaction = await tx.transaction.update({
+            where: {
+                id: existingTransaction.id,
+            },
+            data: {
+                categoryId: updatedCategoryId,
+                kind: updatedKind,
+                amount: updatedAmount,
+                note: updatedNote,
+                occurredAt: updatedOccurredAt,
+            },
+        });
+
+        // Apply new wallet impact atomically.
+        await tx.wallet.update({
+            where: {
+                id: existingTransaction.walletId,
+            },
+            data: {
+                balance:
+                    updatedKind === "income"
+                        ? { increment: updatedAmount }
+                        : { decrement: updatedAmount },
+            },
+        });
+
+        return updatedTransaction;
+    });
+
+    // Invalidate cache
+    try {
+        await Promise.all([
+            deleteCacheByPattern(getDashboardUserCachePattern(userId)),
+            deleteCacheByPattern(getAIUserCachePattern(userId)),
+        ]);
+    } catch (error) {
+        console.error(
+            "Cache invalidation failed after transaction mutation:",
+            error,
+        );
+    }
+
+    return result;
 };

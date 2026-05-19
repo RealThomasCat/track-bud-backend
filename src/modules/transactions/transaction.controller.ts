@@ -4,12 +4,14 @@ import {
     getTransactionsService,
     createTransactionService,
     deleteTransactionService,
+    updateTransactionService,
 } from "./transaction.service";
 import {
     createTransactionSchema,
     deleteTransactionSchema,
     getTransactionByIdSchema,
     getTransactionsQuerySchema,
+    updateTransactionSchema,
 } from "./transaction.validation";
 
 // --- GET TRANSACTIONS ---
@@ -94,6 +96,34 @@ export const deleteTransaction = async (
         res.status(200).json({
             success: true,
             message: "Transaction deleted successfully",
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// --- UPDATE TRANSACTION ---
+export const updateTransaction = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const userId = req.user?.id!;
+
+        const parsedParams = getTransactionByIdSchema.parse(req.params);
+        const parsedBody = updateTransactionSchema.parse(req.body);
+
+        const transaction = await updateTransactionService(
+            userId,
+            parsedParams.id,
+            parsedBody,
+        );
+
+        res.status(200).json({
+            success: true,
+            transaction,
+            message: "Transaction updated successfully",
         });
     } catch (error) {
         next(error);

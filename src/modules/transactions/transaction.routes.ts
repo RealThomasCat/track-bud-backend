@@ -5,6 +5,7 @@ import {
     deleteTransaction,
     getTransactionById,
     getTransactions,
+    updateTransaction,
 } from "./transaction.controller";
 import { writeLimiter } from "../../middleware/rateLimitMiddleware";
 
@@ -19,5 +20,6 @@ router.get("/:id", getTransactionById);
 // Apply writeLimiter to routes that modify data (POST, PATCH, DELETE)
 router.post("/", writeLimiter, createTransaction);
 router.delete("/:id", writeLimiter, deleteTransaction);
+router.patch("/:id", writeLimiter, updateTransaction);
 
 export default router;
