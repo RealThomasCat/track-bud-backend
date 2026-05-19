@@ -1,0 +1,43 @@
+services:
+  # Local PostgreSQL database for development.
+  postgres:
+    image: postgres:16-alpine
+    container_name: trackbud-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-trackbud}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trackbud_password}
+      POSTGRES_DB: ${POSTGRES_DB:-track_bud}
+    ports:
+      # Host port 5433 avoids conflict with any PostgreSQL installed on Windows.
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # Persists database data even if the container is stopped or recreated.
+      - trackbud_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Local Redis instance for caching and rate limiting.
+  redis:
+    image: redis:7-alpine
+    container_name: trackbud-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      # Persists Redis data when append-only-file persistence is enabled.
+      - trackbud_redis_data:/data
+    # Start Redis server and enable AOF persistence.
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  trackbud_postgres_data:
+  trackbud_redis_data:
