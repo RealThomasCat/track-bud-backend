@@ -23,7 +23,7 @@ const occurredAtSchema = z.string().refine(
     },
 );
 
-export const createTransactionSchema = z.object({
+export const createTransactionSchema = z.strictObject({
     amount: moneySchema,
     categoryId: idSchema,
     kind: z.enum(["income", "expense"], {
@@ -41,11 +41,11 @@ export const createTransactionSchema = z.object({
     occurredAt: occurredAtSchema,
 });
 
-export const deleteTransactionSchema = z.object({
+export const deleteTransactionSchema = z.strictObject({
     id: idSchema,
 });
 
-export const getTransactionByIdSchema = z.object({
+export const getTransactionByIdSchema = z.strictObject({
     id: idSchema,
 });
 
