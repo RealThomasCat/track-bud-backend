@@ -2,7 +2,9 @@ services:
   # TrackBud Express API for local Docker development.
   backend:
     build:
+      # Use the current folder as the Docker build context.
       context: .
+      # Build only up to the dev stage in the Dockerfile.
       target: dev
     container_name: trackbud-backend
     restart: unless-stopped
@@ -12,21 +14,21 @@ services:
       # Exposes the API to the host machine.
       - "${BACKEND_PORT:-5000}:5000"
     volumes:
-    # Mount source files for live reload without mounting local .env.
-    - ./src:/app/src
-    - ./prisma:/app/prisma
-    - ./package.json:/app/package.json
-    - ./package-lock.json:/app/package-lock.json
-    - ./tsconfig.json:/app/tsconfig.json
+      # Mount source files for live reload without mounting local .env.
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./tsconfig.json:/app/tsconfig.json
 
-    # Keep container dependencies separate from host node_modules.
-    - /app/node_modules
+      # Keep container dependencies separate from host node_modules.
+      - /app/node_modules
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "npx prisma generate && npm run dev"
+    # No startup command in compose because Dockerfile dev CMD already handles it
 
   # Local PostgreSQL database for development.
   postgres:
