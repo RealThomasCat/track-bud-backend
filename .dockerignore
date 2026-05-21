@@ -15,3 +15,5 @@ docker-compose.yml
 coverage
 .vscode
 .DS_Store
+
+README.md
