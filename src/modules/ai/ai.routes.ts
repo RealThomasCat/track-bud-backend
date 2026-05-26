@@ -4,6 +4,9 @@ import {
     getSavingRecommendations,
     getSpendingSummary,
 } from "./ai.controller";
+import {
+    createMonthlyReview,
+} from "./monthlyReview/monthlyReview.controller";
 import { authenticate } from "../../middleware/authMiddleware";
 import { aiLimiter } from "../../middleware/rateLimitMiddleware";
 
@@ -18,5 +21,8 @@ router.use(aiLimiter);
 router.get("/spending-summary", getSpendingSummary);
 router.get("/saving-recommendations", getSavingRecommendations);
 router.get("/forecast", getForecast);
+
+// Monthly Review
+router.post("/monthly-review", createMonthlyReview);
 
 export default router;
