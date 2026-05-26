@@ -6,6 +6,8 @@ import {
 } from "./ai.controller";
 import {
     createMonthlyReview,
+    getCurrentMonthlyReview,
+    getMonthlyReviewById,
 } from "./monthlyReview/monthlyReview.controller";
 import { authenticate } from "../../middleware/authMiddleware";
 import { aiLimiter } from "../../middleware/rateLimitMiddleware";
@@ -24,5 +26,7 @@ router.get("/forecast", getForecast);
 
 // Monthly Review
 router.post("/monthly-review", createMonthlyReview);
+router.get("/monthly-review/current", getCurrentMonthlyReview);
+router.get("/monthly-review/:id", getMonthlyReviewById);
 
 export default router;

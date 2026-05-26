@@ -185,3 +185,47 @@ export const createMonthlyReviewService = async (
         throw new AppError("Failed to queue monthly review generation", 503);
     }
 };
+
+// --- GET CURRENT MONTHLY REVIEW ---
+export const getCurrentMonthlyReviewService = async (userId: number) => {
+    // Use the same target period as POST /monthly-review.
+    // This lets the frontend check whether the current default review exists.
+    const period = getPreviousCompletedMonthlyReviewPeriod();
+
+    const review = await findMonthlyReviewForPeriod(
+        userId,
+        period.periodStart,
+        period.periodEnd,
+    );
+
+    return {
+        review,
+        targetPeriod: {
+            periodStart: period.periodStart,
+            periodEnd: period.periodEnd,
+            comparisonStart: period.comparisonStart,
+            comparisonEnd: period.comparisonEnd,
+            title: period.title,
+        },
+    };
+};
+
+// --- GET MONTHLY REVIEW BY ID ---
+export const getMonthlyReviewByIdService = async (
+    userId: number,
+    id: number,
+) => {
+    // Use findFirst instead of findUnique so ownership is checked in the same query.
+    const review = await prisma.monthlyReview.findFirst({
+        where: {
+            id,
+            userId,
+        },
+    });
+
+    if (!review) {
+        throw new AppError("Monthly review not found", 404);
+    }
+
+    return review;
+};
