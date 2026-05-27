@@ -30,6 +30,30 @@ services:
         condition: service_healthy
     # No startup command in compose because Dockerfile dev CMD already handles it
 
+  # TrackBud background worker for local Docker development.
+  # Runs BullMQ workers separately from the Express API process.
+  worker:
+    build:
+      context: .
+      target: dev
+    container_name: trackbud-worker
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    volumes:
+      - ./src:/app/src
+      - ./prisma:/app/prisma
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["sh", "-c", "npx prisma generate && npm run dev:worker"]
+
   # Local PostgreSQL database for development.
   postgres:
     image: postgres:16-alpine
