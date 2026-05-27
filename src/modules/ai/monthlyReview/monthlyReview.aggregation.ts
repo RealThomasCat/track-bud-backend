@@ -210,11 +210,15 @@ const getDataQualityLevel = (
     totalIncome: number,
     totalExpense: number,
 ): DataQualityLevel => {
+    if (transactionCount < 5 || totalIncome <= 0 || totalExpense <= 0) {
+        return DataQualityLevel.LOW;
+    }
+
     if (transactionCount >= 20 && totalIncome > 0 && totalExpense > 0) {
         return DataQualityLevel.HIGH;
     }
 
-    if (transactionCount >= 8 || (totalIncome > 0 && totalExpense > 0)) {
+    if (transactionCount >= 8) {
         return DataQualityLevel.MEDIUM;
     }
 
@@ -228,10 +232,7 @@ const hasEnoughMonthlyReviewData = (
     totalIncome: number,
     totalExpense: number,
 ): boolean => {
-    return (
-        transactionCount >= 5 ||
-        (transactionCount >= 3 && totalIncome > 0 && totalExpense > 0)
-    );
+    return transactionCount >= 5 && totalIncome > 0 && totalExpense > 0;
 };
 
 // Finds categories that increased sharply compared to the previous month.
@@ -390,7 +391,7 @@ export const buildInsufficientDataResult = (
     message:
         "Not enough transaction activity was found to generate a useful monthly review.",
     minimumRule:
-        "At least 5 transactions, or at least 3 transactions with both income and expense activity.",
+        "At least 5 transactions with both income and expense activity.",
     keyMetrics: {
         totalIncome: aggregation.current.totalIncome,
         totalExpense: aggregation.current.totalExpense,
