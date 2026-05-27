@@ -26,6 +26,7 @@ type GenerateStructuredOptions<TSchema extends z.ZodTypeAny> = {
     schema: TSchema; // The schema property must be exactly the same schema type that was passed in.
     responseSchema: GenerateContentConfig["responseSchema"]; // Use whatever type @google/genai expects for config.responseSchema.
     systemInstruction?: string;
+    maxOutputTokens?: number;
 };
 
 // Generates validated structured JSON from Gemini.
@@ -36,6 +37,7 @@ export async function generateStructuredWithGemini<
     schema,
     responseSchema,
     systemInstruction,
+    maxOutputTokens,
 }: GenerateStructuredOptions<TSchema>): Promise<z.infer<TSchema>> {
     // This async function returns a Promise. When awaited, the value has the TypeScript type inferred from the Zod schema.
     try {
@@ -43,7 +45,7 @@ export async function generateStructuredWithGemini<
 
         // Define config for structured response generation.
         const config: GenerateContentConfig = {
-            maxOutputTokens: 500,
+            maxOutputTokens: maxOutputTokens ?? 500,
             temperature: 0.2,
             topP: 0.8,
             thinkingConfig: { thinkingBudget: 0 },
