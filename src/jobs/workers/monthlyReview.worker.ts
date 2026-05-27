@@ -10,9 +10,10 @@ import {
 } from "../monthlyReview.job";
 import {
     aggregateMonthlyReviewData,
-    buildDeterministicMonthlyReviewResult,
+    buildAIMonthlyReviewResult,
     buildInsufficientDataResult,
 } from "../../modules/ai/monthlyReview/monthlyReview.aggregation";
+import { generateMonthlyReviewAIOutput } from "../../modules/ai/monthlyReview/monthlyReview.ai";
 
 const formatWorkerError = (error: Error) => ({
     name: error.name,
@@ -33,7 +34,7 @@ const isFinalJobAttempt = (job: Job<MonthlyReviewJobData>): boolean => {
 };
 
 // Processes monthly review jobs from Redis.
-// For now this saves a deterministic backend-generated result. Gemini interpretation will be added later.
+// Backend computes metrics first; Gemini only adds structured interpretation for sufficient-data reviews.
 const processMonthlyReviewJob = async (job: Job<MonthlyReviewJobData>) => {
     console.log("Monthly review job received", {
         jobId: job.id,
@@ -145,11 +146,12 @@ const processMonthlyReviewJob = async (job: Job<MonthlyReviewJobData>) => {
             };
         }
 
-        // Build the current deterministic report from backend metrics.
-        // In the Gemini step, this will be replaced with validated AI interpretation over the same compact aggregation.
-        const result = buildDeterministicMonthlyReviewResult(aggregation);
+        // Ask Gemini to interpret only compact aggregated metrics.
+        // The response is validated with Zod before it is merged into the final persisted report.
+        const aiOutput = await generateMonthlyReviewAIOutput(aggregation);
+        const result = buildAIMonthlyReviewResult(aggregation, aiOutput);
 
-        // Update monthly review with deterministic result and computed data quality.
+        // Update monthly review with AI interpretation plus backend-computed metrics.
         await prisma.monthlyReview.update({
             where: {
                 id: review.id,
