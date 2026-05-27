@@ -1,5 +1,6 @@
 import { DataQualityLevel, MonthlyReview, Prisma } from "@prisma/client";
 import { prisma } from "../../../config/db";
+import { MonthlyReviewAIOutput } from "./monthlyReview.output";
 
 type CategoryTotal = {
     category: string;
@@ -39,6 +40,37 @@ export type MonthlyReviewAggregation = {
 const roundMoney = (value: number): number => Number(value.toFixed(2));
 
 const roundPercent = (value: number): number => Number(value.toFixed(2));
+
+// Calculates financial health score and label based on aggregation data.
+const getFinancialHealthScore = (
+    aggregation: MonthlyReviewAggregation,
+): { score: number; label: "LOW" | "FAIR" | "GOOD" | "STRONG" } => {
+    const { current } = aggregation;
+
+    const score =
+        current.totalIncome <= 0
+            ? 40
+            : Math.max(
+                  0,
+                  Math.min(
+                      100,
+                      Math.round(100 - (current.expenseToIncomeRatio ?? 100)),
+                  ),
+              );
+
+    const label =
+        current.savingsRate === null
+            ? "FAIR"
+            : current.savingsRate >= 30
+              ? "STRONG"
+              : current.savingsRate >= 15
+                ? "GOOD"
+                : current.savingsRate >= 0
+                  ? "FAIR"
+                  : "LOW";
+
+    return { score, label };
+};
 
 // Calculates percentage-based ratios like savings rate or expense-to-income ratio.
 const calculateRate = (
@@ -236,8 +268,7 @@ const getUnusualCategoryIncreases = (
 };
 
 // Main aggregation entrypoint used by the worker.
-// It produces a compact, token-efficient summary that can later be sent to Gemini safely.
-// TODO: Understand this function
+// It produces a compact, token-efficient summary that can be sent to Gemini safely.
 export const aggregateMonthlyReviewData = async (
     review: MonthlyReview,
 ): Promise<MonthlyReviewAggregation> => {
@@ -300,44 +331,21 @@ export const aggregateMonthlyReviewData = async (
     };
 };
 
-// Builds a temporary deterministic report from backend-computed metrics.
-// This keeps the feature useful/testable before Gemini interpretation is introduced.
-export const buildDeterministicMonthlyReviewResult = (
+// Builds the final persisted report by combining deterministic backend metrics with Gemini interpretation.
+// The AI output supplies narrative text only; all numbers and limits remain backend-computed.
+export const buildAIMonthlyReviewResult = (
     aggregation: MonthlyReviewAggregation,
+    aiOutput: MonthlyReviewAIOutput,
 ) => {
     const { current } = aggregation;
+    const financialHealthScore = getFinancialHealthScore(aggregation);
 
     return {
-        executiveSummary:
-            "This monthly review is based on deterministic backend calculations. AI interpretation will be added in the next step.",
+        executiveSummary: aiOutput.executiveSummary,
         financialHealthScore: {
-            score:
-                current.totalIncome <= 0
-                    ? 40
-                    : Math.max(
-                          0,
-                          Math.min(
-                              100,
-                              Math.round(
-                                  100 - (current.expenseToIncomeRatio ?? 100),
-                              ),
-                          ),
-                      ),
-            label:
-                current.savingsRate === null
-                    ? "FAIR"
-                    : current.savingsRate >= 30
-                      ? "STRONG"
-                      : current.savingsRate >= 15
-                        ? "GOOD"
-                        : current.savingsRate >= 0
-                          ? "FAIR"
-                          : "LOW",
-            reasons: [
-                `Income: ${current.totalIncome}`,
-                `Expenses: ${current.totalExpense}`,
-                `Net savings: ${current.netSavings}`,
-            ],
+            score: financialHealthScore.score,
+            label: financialHealthScore.label,
+            reasons: aiOutput.financialHealthReasons,
         },
         keyMetrics: {
             totalIncome: current.totalIncome,
@@ -351,41 +359,25 @@ export const buildDeterministicMonthlyReviewResult = (
             incomeChangePercent: aggregation.incomeChangePercent,
             expenseChangePercent: aggregation.expenseChangePercent,
             savingsChangePercent: aggregation.savingsChangePercent,
-            summary:
-                "Previous month comparison is calculated by the backend and will be interpreted by AI later.",
+            summary: aiOutput.comparisonSummary,
         },
-        spendingBehaviorPatterns: current.topExpenseCategories.map(
-            (category) =>
-                `${category.category} accounted for ${category.percentOfExpenses}% of expenses.`,
-        ),
-        unusualSpendingOrRiskSignals: aggregation.unusualCategoryIncreases.map(
-            (category) =>
-                `${category.category} increased by ${category.changePercent}% compared to the previous month.`,
-        ),
-        savingsQuality: {
-            summary:
-                current.savingsRate === null
-                    ? "Savings quality cannot be calculated without income."
-                    : `Savings rate is ${current.savingsRate}%.`,
-            rating:
-                current.savingsRate !== null && current.savingsRate >= 20
-                    ? "HIGH"
-                    : current.savingsRate !== null && current.savingsRate >= 5
-                      ? "MEDIUM"
-                      : "LOW",
-        },
-        suggestedBudgetTargets: current.topExpenseCategories.map(
-            (category) => ({
+        spendingBehaviorPatterns: aiOutput.spendingBehaviorPatterns,
+        unusualSpendingOrRiskSignals: aiOutput.unusualSpendingOrRiskSignals,
+        savingsQuality: aiOutput.savingsQuality,
+        suggestedBudgetTargets: current.topExpenseCategories.map((category) => {
+            const aiReason = aiOutput.suggestedBudgetTargetReasons.find(
+                (item) => item.category === category.category,
+            );
+
+            return {
                 category: category.category,
                 suggestedLimit: roundMoney(category.total * 0.9),
-                reason: "Temporary deterministic target: 10% lower than current spending.",
-            }),
-        ),
-        nextMonthActionPlan: [
-            "Review the largest expense categories.",
-            "Set budget targets for categories with the highest concentration.",
-            "Track income and expenses consistently next month.",
-        ],
+                reason:
+                    aiReason?.reason ??
+                    "Suggested target is 10% lower than current spending.",
+            };
+        }),
+        nextMonthActionPlan: aiOutput.nextMonthActionPlan,
     };
 };
 
