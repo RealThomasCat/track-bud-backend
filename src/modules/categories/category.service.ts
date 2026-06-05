@@ -4,12 +4,24 @@ import {
     CreateCategoryInput,
     DeleteCategoryInput,
 } from "./category.validation";
+import { normalizeCategoryName } from "../../utils/categoryName";
+
+const categoryResponseSelect = {
+    id: true,
+    userId: true,
+    name: true,
+    isDefault: true,
+    isArchived: true,
+    createdAt: true,
+    updatedAt: true,
+} as const;
 
 // --- GET CATEGORIES ---
 export const getCategoriesService = async (userId: number) => {
     const categories = await prisma.category.findMany({
         where: { userId, isArchived: false },
         orderBy: { createdAt: "desc" },
+        select: categoryResponseSelect,
     });
 
     return categories;
@@ -20,10 +32,12 @@ export const createCategoryService = async (
     userId: number,
     data: CreateCategoryInput,
 ) => {
+    const normalizedName = normalizeCategoryName(data.name);
+
     try {
-        // NOTE: We are not manually checking for exsisting category names here.
-        // The database has a unique constraint on (userId, name) which will throw
-        // an error if a duplicate is attempted to be created.
+        // NOTE: We are not manually checking for existing category names here.
+        // The database has a unique constraint on (userId, normalizedName)
+        // which will throw an error if a duplicate is attempted to be created.
 
         // We are using only one db call here for solving race condition and performance.
         // The unique constraint will ensure that even if two requests come in
@@ -33,21 +47,27 @@ export const createCategoryService = async (
         // So there we can afford to do a pre-check. But here, categories can be created more frequently
 
         const category = await prisma.category.create({
-            data: { userId, name: data.name, isDefault: false },
+            data: {
+                userId,
+                name: data.name,
+                normalizedName,
+                isDefault: false,
+            },
+            select: categoryResponseSelect,
         });
 
         return category;
     } catch (error: any) {
-        // Handle unique constraint violation (e.g., duplicate category name)
+        // Handle unique constraint violation (e.g., duplicate normalized category name)
         if (error.code !== "P2002") {
             throw error;
         }
 
-        // Check if the existing category with the same name is archived
+        // Check if the existing category with the same normalized name is archived.
         const existingCategory = await prisma.category.findFirst({
             where: {
                 userId,
-                name: data.name,
+                normalizedName,
             },
             select: {
                 isArchived: true,
@@ -90,6 +110,7 @@ export const deleteCategoryService = async (
     const updatedCategory = await prisma.category.update({
         where: { id: data.id },
         data: { isArchived: true },
+        select: categoryResponseSelect,
     });
 
     return updatedCategory;

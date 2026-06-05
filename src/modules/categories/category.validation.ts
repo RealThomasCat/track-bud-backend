@@ -7,7 +7,7 @@ export const createCategorySchema = z.strictObject({
         .trim()
         .min(1, { message: "Category name is required" })
         .max(50, { message: "Category name must be less than 50 characters" })
-        .transform((value) => value.toLowerCase()),
+        .transform((value) => value.trim()),
 });
 
 export const deleteCategorySchema = z.strictObject({
