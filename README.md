@@ -98,7 +98,8 @@ The backend MVP is feature-complete for its current scope. Production deployment
 | Language         | TypeScript                                 |
 | Database         | PostgreSQL                                 |
 | ORM              | Prisma                                     |
-| Cache            | Redis with `redis`                         |
+| Cache            | Redis                                      |
+| Redis Client     | redis                                      |
 | Background jobs  | BullMQ                                     |
 | Validation       | Zod                                        |
 | Authentication   | JWT, `bcryptjs`, HTTP-only cookies         |
@@ -370,11 +371,6 @@ The repository includes a production Docker stage, but deployment still requires
 - The Docker image uses Node.js 22 while `package.json` currently declares Node.js 20.
 - Refresh-token rotation and audit logging are not implemented.
 - Large-scale architecture such as read replicas and event-driven processing is intentionally deferred.
-
-## Documentation
-
-- [Backend Technical Documentation](./TrackBud_Backend_Technical_Documentation.md)
-- [Backend Development Plan](./TrackBud_Backend_Development_Plan.md)
 
 ## License
 
