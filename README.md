@@ -29,7 +29,10 @@ The backend MVP is feature-complete for its current scope. Production deployment
 ### Authentication
 
 - Signup, login, logout, and current-user endpoints
-- JWT access token stored in an HTTP-only cookie
+- JWT access token stored in a stable HTTP-only `token` cookie
+- SSR-safe session validation through `GET /api/v1/auth/me`
+- Consistent `401` responses for missing, invalid, expired, or deleted-user sessions
+- Protected API responses use `Cache-Control: private, no-store`
 - Password hashing with `bcryptjs`
 - Default wallet and categories created during signup
 - CORS, Helmet headers, and auth-route rate limits
@@ -180,6 +183,8 @@ docker-compose.yml
 
 All versioned API routes are mounted under `/api/v1`.
 
+Protected routes accept browser and server-side requests that include `Cookie: token=...`. User-specific protected responses send `Cache-Control: private, no-store` so dashboard, category, auth, transaction, and AI reads are not stored by shared/public caches.
+
 | Area         | Method   | Route                               | Purpose                               |
 | ------------ | -------- | ----------------------------------- | ------------------------------------- |
 | Auth         | `POST`   | `/api/v1/auth/signup`               | Create an account                     |
@@ -232,6 +237,7 @@ Important schema choices:
 - Enforce ownership in service queries and transaction relationships.
 - Run dashboard aggregation in PostgreSQL.
 - Treat Redis as an optional cache layer for API reads with graceful fallback.
+- Keep Redis cache keys user-scoped for cached dashboard and AI reads.
 - Send aggregated finance data to Gemini instead of raw transaction dumps.
 - Use BullMQ for monthly AI work that should not block request handling.
 - Run API, worker, PostgreSQL, and Redis as separate Docker Compose services.
