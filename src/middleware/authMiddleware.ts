@@ -23,10 +23,13 @@ const isAuthTokenPayload = (
 // Middleware to verify token stored in HTTP-only cookie
 export const authenticate = (
     req: Request,
-    _res: Response,
+    res: Response,
     next: NextFunction,
 ) => {
     try {
+        // Authenticated API responses contain user-specific data and must not be stored by shared caches.
+        res.setHeader("Cache-Control", "private, no-store");
+
         const token = req.cookies?.token; // read from cookie
 
         if (!token) {
