@@ -97,7 +97,7 @@ export const meService = async (userId: number) => {
     });
 
     if (!user) {
-        throw new AppError("User not found", 404);
+        throw new AppError("Unauthorized: Invalid session", 401);
     }
 
     return user;
