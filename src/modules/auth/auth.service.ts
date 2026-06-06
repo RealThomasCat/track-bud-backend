@@ -4,6 +4,7 @@ import { signToken } from "../../utils/jwt";
 import { SignupInput, LoginInput } from "./auth.validation";
 import { DEFAULT_CATEGORIES } from "../../constants/defaultCategories";
 import { AppError } from "../../utils/AppError";
+import { normalizeCategoryName } from "../../utils/categoryName";
 
 // --- CREATE USER ---
 export const signupService = async (data: SignupInput) => {
@@ -43,6 +44,7 @@ export const signupService = async (data: SignupInput) => {
         await tx.category.createMany({
             data: DEFAULT_CATEGORIES.map((name) => ({
                 name,
+                normalizedName: normalizeCategoryName(name),
                 userId: user.id,
                 isDefault: true,
             })),
